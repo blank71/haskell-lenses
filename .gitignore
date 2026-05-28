@@ -1,4 +1,5 @@
 .#*
+.db
 .direnv
 .stack-work
 test.*

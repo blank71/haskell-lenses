@@ -6,10 +6,10 @@
 
   outputs =
     {
-      self,
       nixpkgs,
       nixpkgs-release,
       flake-utils,
+      ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -45,6 +45,13 @@
           # hPkgs.cabal-install
           stack-wrapped
           pkgs.zlib # External C library needed by some Haskell packages
+
+          ### for local postgres server
+          db-init
+          db-start
+          db-stop
+          db-chech-env
+          psql-wrapped
         ];
 
         # Wrap Stack to work with our Nix integration. We do not want to modify
@@ -65,6 +72,63 @@
               "
           '';
         };
+
+        ### custom script to run a local postgres server
+        ### https://github.com/hermann-p/nix-postgres-dev-db/tree/3d81eebf90584c1d9cc659b3c8c0f67bf2832335
+        root-env-var = "$PG_ROOT";
+        db-path = "${root-env-var}/.db";
+        db-name = "links";
+        db-user = "links";
+        db-passwd = "links";
+        db-port = "5432";
+        db-script-name = "haskell-lenses-db";
+
+        db-chech-env = pkgs.writeShellScriptBin "${db-script-name}-check" ''
+          if [[ -z "${root-env-var}" ]]; then
+            echo '${root-env-var}' is not set, can not init database;
+            exit 1;
+          fi
+        '';
+
+        db-init = pkgs.writeShellScriptBin "${db-script-name}-init" ''
+          set -e
+          ${db-chech-env}/bin/${db-script-name}-check
+          db_pid_dir="/run/postgresql"
+          current_user=$(id -u -n)
+
+          initdb -D "${db-path}"
+          pg_ctl -D ${db-path} -o "-k ${db-path}" -o "-p ${db-port}" -l ${db-path}/database.log start
+          for DBNAME in {${db-name},$current_user}; do
+            createdb -h ${db-path} -p ${db-port} $DBNAME
+          done
+          psql --host ${db-path} --port ${db-port} \
+            -tc "CREATE USER ${db-user} WITH SUPERUSER"
+        '';
+
+        db-start = pkgs.writeShellScriptBin "${db-script-name}-start" ''
+          set -e
+          ${db-chech-env}/bin/${db-script-name}-check
+          if [[ ! -d "${db-path}" ]]; then
+            ${db-init}/bin/${db-script-name}-init
+          elif [[ ! -f "${db-path}/.s.PGSQL.${db-port}.lock" ]]; then
+              pg_ctl -D ${db-path} -o "-k ${db-path}" -o "-p ${db-port}" -l ${db-path}/database.log start
+          else
+              echo Postgres is already running for this project
+          fi
+        '';
+
+        db-stop = pkgs.writeShellScriptBin "${db-script-name}-stop" ''
+          set -e
+          ${db-chech-env}/bin/${db-script-name}-check
+          pg_ctl -D ${db-path} stop || rm "${db-path}/.s.PGSQL.${db-port}.lock"
+        '';
+
+        psql-wrapped = pkgs.writeShellScriptBin "psql-wrapped" ''
+          set -e
+          ${db-chech-env}/bin/${db-script-name}-check
+          PGHOST="${db-path}" PGPORT="${db-port}" PGUSER="${db-user}" PGPASSWORD="${db-passwd}" PGDATABASE="${db-name}" psql "$@"
+        '';
+
       in
       {
         devShells.default = pkgs.mkShell {
@@ -74,6 +138,11 @@
           # pkgs.haskell.lib.buildStackProject does
           # https://github.com/NixOS/nixpkgs/blob/d64780ea0e22b5f61cd6012a456869c702a72f20/pkgs/development/haskell-modules/generic-stack-builder.nix#L38
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath myDevTools;
+
+          # run postgresql server for testing
+          shellHook = ''
+            export PG_ROOT=$(git rev-parse --show-toplevel)
+          '';
         };
       }
     );
