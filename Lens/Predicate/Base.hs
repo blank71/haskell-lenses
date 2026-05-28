@@ -261,9 +261,9 @@ type EvalEnv1 = '[ '("A", 'Int 30), '("B", 'Bool 'True), '("C", 'Int 10) ]
 type EvalEnv2 = '[ '("A", 'Int 100), '("B", 'Bool 'True), '("C", 'Int 10) ]
 
 type family LookupEvalVar (env :: EvalEnv) (v :: Symbol) :: Maybe Value where
-  LookupVar '[] _ = 'Nothing
-  LookupVar ('(key,val) ': xs) key = 'Just val
-  LookupVar (_ ': xs) key = LookupEvalVar xs key
+  LookupEvalVar '[] _ = 'Nothing
+  LookupEvalVar ('(key,val) ': xs) key = 'Just val
+  LookupEvalVar (_ ': xs) key = LookupEvalVar xs key
 
 type family IsCmp (o :: Ordering) (p :: Ordering) :: Maybe Value where
   IsCmp a a = 'Just ('Bool 'True)

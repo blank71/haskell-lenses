@@ -134,7 +134,7 @@ type Fetchable s env t evid = (
   evid ~ Find env s,
   FetchRow t evid (Row env))
 
-type Test s env t = forall evid. Fetchable s env t evid
+-- type Test s env t = forall evid. Fetchable s env t evid
 
 fetch :: forall s env t evid. Fetchable s env t evid => Row env -> t
 fetch row = intfetch @t @evid row

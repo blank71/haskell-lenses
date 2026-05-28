@@ -156,8 +156,8 @@ type family DropColumn (dr :: [Symbol]) (fds :: [FunDep]) :: [FunDep] where
   DropColumn dr fds = DropColumnEx dr (DropKey dr fds) fds
 
 type family TopologicalSortEx (res :: ([[Symbol]], [FunDep], [FunDep])) :: [FunDep] where
-  IsAcyclicEx '(_, vfds, '[]) = vfds
-  IsAcyclicEx '(syms, vfds, fds) = vfds :++ TopologicalSortEx (Follow syms fds)
+  TopologicalSortEx '(_, vfds, '[]) = vfds
+  TopologicalSortEx '(syms, vfds, fds) = vfds :++ TopologicalSortEx (Follow syms fds)
 
 type family TopologicalSort (fds :: [FunDep]) :: [FunDep] where
   TopologicalSort fds = TopologicalSortEx '(StartingPoints fds, '[], fds)
