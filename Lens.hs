@@ -1,11 +1,6 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             AllowAmbiguousTypes, TypeApplications, QuantifiedConstraints, RankNTypes #-}
-
 module Lens where
 
+import Control.DeepSeq (NFData)
 import Control.DeepSeq (NFData)
 import GHC.TypeLits
 import Data.Type.Set ((:++), Proxy(..))

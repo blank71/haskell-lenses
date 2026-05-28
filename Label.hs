@@ -1,15 +1,10 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving #-}
-
 module Label where
 
-import GHC.TypeLits
+import Data.Kind
+import Data.List
 import Data.Type.Bool
 import Data.Type.Set
-import Data.List
-import Data.Kind
+import GHC.TypeLits
 
 data Lab :: Symbol -> * where
   Lab :: Lab l
@@ -69,7 +64,7 @@ type family IsDisjoint (l :: [Symbol]) (r :: [Symbol]) :: Bool where
   IsDisjoint (x ': xs) ys = Not (IsElement x ys) && IsDisjoint xs ys
 
 type family DisjointFromAll (s :: [Symbol]) (xs :: [[Symbol]]) :: Bool where
-  DisjointFromAll xs '[]  = 'True
+  DisjointFromAll xs '[] = 'True
   DisjointFromAll xs (y ': ys) = IsDisjoint xs y && DisjointFromAll xs ys
 
 type family AllDisjoint (s :: [[Symbol]]) :: Bool where
@@ -82,7 +77,7 @@ type family IsEqual (l :: [Symbol]) (r :: [Symbol]) :: Bool where
 
 type family LabUnion (l :: [Symbol]) (r :: [Symbol]) :: [Symbol] where
   LabUnion '[] ys = ys
-  LabUnion (x ': xs) ys = AddIf  (Not (IsElement x ys)) x (LabUnion xs ys)
+  LabUnion (x ': xs) ys = AddIf (Not (IsElement x ys)) x (LabUnion xs ys)
 
 type family SetSubtract (l :: [Symbol]) (r :: [Symbol]) :: [Symbol] where
   SetSubtract '[] _ = '[]

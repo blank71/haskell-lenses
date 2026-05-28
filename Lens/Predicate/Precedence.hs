@@ -1,4 +1,3 @@
-
 module Lens.Predicate.Precedence where
 
 import qualified Lens.Predicate.Base as P
@@ -14,8 +13,9 @@ of_op P.LogicalOr = Or
 of_op P.Plus = Add
 -- of_op P.Minus = Sub
 of_op P.Equal = Cmp
-of_op P.GreaterThan= Cmp
+of_op P.GreaterThan = Cmp
 of_op P.LessThan = Cmp
+
 -- of_op P.Multiply = Mult
 -- of_op P.Divide = Divide
 

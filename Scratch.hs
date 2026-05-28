@@ -1,8 +1,6 @@
-{-# LANGUAGE FlexibleContexts, ScopedTypeVariables, TypeApplications, DataKinds,
-             AllowAmbiguousTypes, OverloadedLabels #-}
-
 module Scratch where
 
+import Prelude
 import GHC.Types (Nat)
 import Data.Set (fromList, Set)
 import Data.Text.Format
@@ -29,7 +27,7 @@ import qualified Lens.Types as T
 import qualified Lens.Predicate.Base as P
 import qualified Lens.Predicate.Dynamic as DP
 
-db_connect = connect defaultConnectInfo {
+dbConnect = connect defaultConnectInfo {
     connectDatabase = "links",
     connectUser = "links",
     connectPassword = "links"
@@ -37,20 +35,21 @@ db_connect = connect defaultConnectInfo {
 
 test_get :: (LensGet s PostgresDatabase) => Lens s -> IO (Set (QueryRow s))
 test_get (l :: Lens s) = do
-  conn <- db_connect
-  res <- get conn l
+  conn <- dbConnect
+  get conn l
+  -- res <- get conn l
   -- mapM_ Prelude.print res
-  return res
+  -- return res
 
 test_put_debug :: LensPut PostgresDatabase s =>
   Lens s -> RecordsSet (Rt s) -> IO ()
 test_put_debug l rs =
-  do conn <- db_connect
+  do conn <- dbConnect
      put_wif conn l rs
 
 test_put :: LensPut PostgresDatabase s => Lens s -> RecordsSet (Rt s) -> IO ()
 test_put l rs =
-  do conn <- db_connect
+  do conn <- dbConnect
      put conn l rs
 
 -- Bohanonn et al. PODS 2016 examples
@@ -104,12 +103,12 @@ examplePut = recs @Tracks3
   [ ("Lullaby", 4, "Show", 3),
     ("Lovesong", 5, "Disintegration", 7)]
 
--- my_hybrid_lenses :: Bool -> Int -> String -> IO [Row Output]
-my_hybrid_lenses b i s = do
+-- myHybridLenses :: Bool -> Int -> String -> IO [Row Output]
+myHybridLenses b i s = do
     test_get tracks3 where
   pred = if b
-         then (erased @PredRow @Bool (var @"quantity" #> di i))
-         else (erased @PredRow @Bool (var @"album" #= ds s))
+         then erased @PredRow @Bool (var @"quantity" #> di i)
+         else erased @PredRow @Bool (var @"album" #= ds s)
   tracks1 = Lens.join tracks albums
   tracks2 = select pred tracks1
   tracks3 = dropl @'[ '("date", 'P.Int 2020)] @'["track"] tracks2
@@ -117,16 +116,17 @@ my_hybrid_lenses b i s = do
 type FdsEx = '[ '["album"] --> '["quantity"],
               '["quantity"] --> '["date", "rating"]]
 
-from_year ::
+fromYear ::
   Selectable (Var "date" := Erased '[] Int) s snew
   => Int -> Lens s -> Lens snew
-from_year year l =
-  select p l where
+fromYear year =
+  select p where
   p = var @"date" #= di year
 
-tracks_2020 = from_year 2020 tracks
+tracks_2020 = fromYear 2020 tracks
 
 affect = do
   res <- test_get tracks3
-  q <- DP.print $ affected @FdsEx $ res
-  return q
+  DP.print $ affected @FdsEx $ res
+  -- q <- DP.print $ affected @FdsEx $ res
+  -- return q

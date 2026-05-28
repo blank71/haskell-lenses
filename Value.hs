@@ -1,16 +1,8 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             TypeApplications #-}
-
 module Value where
 
-import GHC.TypeLits
-import Data.Type.Set (Proxy(..))
-
 import Common
-
+import Data.Type.Set (Proxy (..))
+import GHC.TypeLits
 import qualified Lens.Types as T
 
 data Value (typ :: T.Type) where

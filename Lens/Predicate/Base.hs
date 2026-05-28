@@ -1,22 +1,14 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             AllowAmbiguousTypes, TypeApplications #-}
-
 module Lens.Predicate.Base where
 
+import Common
 import Control.DeepSeq
-import GHC.TypeLits
 import Data.Type.Bool
 import Data.Type.Set
-
-import Common
-import Lens.Record.Base (Env, Row, VarsEnv)
+import GHC.TypeLits
 import Label
-
-import qualified Lens.Types as T
+import Lens.Record.Base (Env, Row, VarsEnv)
 import qualified Lens.Record.Base as RT
+import qualified Lens.Types as T
 
 data UnaryOperator where
   Negate :: UnaryOperator
@@ -81,11 +73,11 @@ instance NFData2 Phrase where
   liftRnf2 r _ (Var id) = r id
   liftRnf2 r1 r2 (InfixAppl op v1 v2) = rnf op `seq` liftRnf2 r1 r2 v1 `seq` liftRnf2 r1 r2 v2
   liftRnf2 r1 r2 (UnaryAppl op v) = rnf op `seq` liftRnf2 r1 r2 v
-  liftRnf2 r1 r2 (In ids v) = rnf (map r1 ids) `seq` rnf (map (rnf. map r2) v)
+  liftRnf2 r1 r2 (In ids v) = rnf (map r1 ids) `seq` rnf (map (rnf . map r2) v)
   liftRnf2 r1 r2 (Case mb cases e) =
     rnf (fmap (liftRnf2 r1 r2) mb) `seq`
-    rnf (fmap (\(a,b) -> liftRnf2 r1 r2 a `seq` liftRnf2 r1 r2 b) cases) `seq`
-    liftRnf2 r1 r2 e
+      rnf (fmap (\(a, b) -> liftRnf2 r1 r2 a `seq` liftRnf2 r1 r2 b) cases) `seq`
+        liftRnf2 r1 r2 e
   liftRnf2 r1 r2 (Erased _ _) = ()
 
 type SPhrase = Phrase Symbol Value
@@ -131,13 +123,13 @@ type Ph3 = (V "A" :> I 99) :& (V "B" :| (V "C" :< I 30))
 
 type Ph4 = (V "A" :> I 99) :& (V "B" :| (V "A" :< I 30))
 
-type Env1 = '[ '("A", 'T.Int), '("B", 'T.Bool), '("C", 'T.Int) ]
+type Env1 = '[ '("A", 'T.Int), '("B", 'T.Bool), '("C", 'T.Int)]
 
 type family Neg (p :: SPhrase) :: SPhrase where
- Neg p = 'UnaryAppl 'UnaryMinus p
+  Neg p = 'UnaryAppl 'UnaryMinus p
 
 type family BNeg (p :: SPhrase) :: SPhrase where
- BNeg p = 'UnaryAppl 'Negate p
+  BNeg p = 'UnaryAppl 'Negate p
 
 type family FTV (phrase :: SPhrase) :: [Symbol] where
   FTV ('Constant _) = '[]
@@ -149,28 +141,27 @@ type family FTV (phrase :: SPhrase) :: [Symbol] where
   FTV ('Case ('Just p) ps other) = FTV p :++ FTV other
   FTV ('Erased rt _) = VarsEnv rt
 
-
 type family TypVal (c :: Value) :: * where
   TypVal ('Bool _) = Bool
   TypVal ('Int _) = Int
   TypVal ('String _) = String
 
-type family LookupVar (env :: Env) (v :: Symbol) :: Maybe * where
+type family LookupVar (env :: Env) (v :: Symbol) :: Maybe (*) where
   LookupVar '[] _ = 'Nothing
   LookupVar ('(key, t) ': xs) key = 'Just t
   LookupVar (_ ': xs) key = LookupVar xs key
 
-type family TypUnary (op :: UnaryOperator) (pt :: Maybe *) :: Maybe * where
+type family TypUnary (op :: UnaryOperator) (pt :: Maybe (*)) :: Maybe (*) where
   TypUnary 'Negate ('Just Bool) = 'Just Bool
   TypUnary 'UnaryMinus ('Just Int) = 'Just Int
   TypUnary _ _ = 'Nothing
 
-type family TypCmp (pt1 :: Maybe *) (pt2 :: Maybe *) :: Maybe * where
+type family TypCmp (pt1 :: Maybe (*)) (pt2 :: Maybe (*)) :: Maybe (*) where
   TypCmp 'Nothing 'Nothing = 'Nothing
   TypCmp a a = 'Just Bool
   TypCmp _ _ = 'Nothing
 
-type family TypInfix (op :: Operator) (pt1 :: Maybe *) (pt2 :: Maybe *) :: Maybe * where
+type family TypInfix (op :: Operator) (pt1 :: Maybe (*)) (pt2 :: Maybe (*)) :: Maybe (*) where
   TypInfix 'Plus ('Just Int) ('Just Int) = 'Just Int
   TypInfix 'LogicalAnd ('Just Bool) ('Just Bool) = 'Just Bool
   TypInfix 'LogicalOr ('Just Bool) ('Just Bool) = 'Just Bool
@@ -179,31 +170,31 @@ type family TypInfix (op :: Operator) (pt1 :: Maybe *) (pt2 :: Maybe *) :: Maybe
   TypInfix 'LessThan pt1 pt2 = TypCmp pt1 pt2
   TypInfix _ _ _ = 'Nothing
 
-type family TypCase (env :: Env) (ct :: Maybe *) (elsetyp :: Maybe *) (cases :: [(SPhrase, SPhrase)]) :: Maybe * where
+type family TypCase (env :: Env) (ct :: Maybe (*)) (elsetyp :: Maybe (*)) (cases :: [(SPhrase, SPhrase)]) :: Maybe (*) where
   TypCase _ 'Nothing _ _ = 'Nothing
-  TypCase _ ('Just _) elsetyp '[]  = elsetyp
+  TypCase _ ('Just _) elsetyp '[] = elsetyp
   TypCase env ct elsetyp ('(k, v) ': cases) =
     If (Equal (Typ env k) ct && Equal (Typ env v) elsetyp) (TypCase env ct elsetyp cases) 'Nothing
 
-type family TypeDynamic (env :: Env) (rt :: Env) (ret :: *) :: Maybe * where
+type family TypeDynamic (env :: Env) (rt :: Env) (ret :: *) :: Maybe (*) where
   TypeDynamic _ '[] ret = 'Just ret
-  TypeDynamic env ('(k,t) ': rt) ret =
+  TypeDynamic env ('(k, t) ': rt) ret =
     If (Equal (LookupVar env k) ('Just t)) (TypeDynamic env rt ret) 'Nothing
 
-type family TypAll (env :: Env) (ids :: [Symbol]) :: [Maybe *] where
+type family TypAll (env :: Env) (ids :: [Symbol]) :: [Maybe (*)] where
   TypAll env '[] = '[]
   TypAll env (id ': ids) = LookupVar env id ': TypAll env ids
 
-type family TupleTypes (typs :: [Maybe *]) (v :: [Value]) :: Bool where
+type family TupleTypes (typs :: [Maybe (*)]) (v :: [Value]) :: Bool where
   TupleTypes '[] '[] = 'True
   TupleTypes (t ': ts) (v ': vs) = Equal t ('Just (TypVal v)) && TupleTypes ts vs
   TupleTypes _ _ = 'False
 
-type family TypeIn (typs :: [Maybe *]) (v :: [[Value]]) :: Maybe * where
+type family TypeIn (typs :: [Maybe (*)]) (v :: [[Value]]) :: Maybe (*) where
   TypeIn _ '[] = 'Just Bool
   TypeIn ts (v ': vs) = If (TupleTypes ts v) (TypeIn ts vs) 'Nothing
 
-type family Typ (env :: Env) (phrase :: SPhrase) :: Maybe * where
+type family Typ (env :: Env) (phrase :: SPhrase) :: Maybe (*) where
   Typ _ ('Constant c) = 'Just (TypVal c)
   Typ env ('Var v) = LookupVar env v
   Typ env ('UnaryAppl op p) = TypUnary op (Typ env p)
@@ -224,7 +215,7 @@ type family IsLJDI (vs :: [Symbol]) (phrase :: SPhrase) :: Bool where
 
 type LJDI vs p = IsLJDI vs p ~ 'True
 
-type EvalEnv = [(Symbol,Value)]
+type EvalEnv = [(Symbol, Value)]
 
 type family EvalRowType (e :: EvalEnv) :: Env where
   EvalRowType '[] = '[]
@@ -253,17 +244,18 @@ instance (EvalEnvRow env, Ord (TypVal v), Eq (TypVal v), Recoverable v (TypVal v
 
 type family Vars (env :: EvalEnv) :: [Symbol] where
   Vars '[] = '[]
-  Vars ('(key,_) ': xs) = key ': Vars xs
+  Vars ('(key, _) ': xs) = key ': Vars xs
 
 type HasCols ev env = IsSubset (Vars ev) (VarsEnv env) ~ 'True
 
-type EvalEnv1 = '[ '("A", 'Int 30), '("B", 'Bool 'True), '("C", 'Int 10) ]
-type EvalEnv2 = '[ '("A", 'Int 100), '("B", 'Bool 'True), '("C", 'Int 10) ]
+type EvalEnv1 = '[ '("A", 'Int 30), '("B", 'Bool 'True), '("C", 'Int 10)]
+
+type EvalEnv2 = '[ '("A", 'Int 100), '("B", 'Bool 'True), '("C", 'Int 10)]
 
 type family LookupEvalVar (env :: EvalEnv) (v :: Symbol) :: Maybe Value where
-  LookupVar '[] _ = 'Nothing
-  LookupVar ('(key,val) ': xs) key = 'Just val
-  LookupVar (_ ': xs) key = LookupEvalVar xs key
+  LookupEvalVar '[] _ = 'Nothing
+  LookupEvalVar ('(key, val) ': xs) key = 'Just val
+  LookupEvalVar (_ ': xs) key = LookupEvalVar xs key
 
 type family IsCmp (o :: Ordering) (p :: Ordering) :: Maybe Value where
   IsCmp a a = 'Just ('Bool 'True)
@@ -289,9 +281,9 @@ type family Eval (env :: EvalEnv) (phrase :: SPhrase) :: Maybe Value where
   Eval env ('InfixAppl op p1 p2) = EvalInfix op (Eval env p1) (Eval env p2)
 
 -- Test with:
-  -- :t Proxy :: Proxy (Eval EvalEnv1 Ph3)
-  -- :t Proxy :: Proxy (Eval EvalEnv2 Ph3)
-  -- :t Proxy :: Proxy (Eval EvalEnv2 Ph4)
+-- :t Proxy :: Proxy (Eval EvalEnv1 Ph3)
+-- :t Proxy :: Proxy (Eval EvalEnv2 Ph3)
+-- :t Proxy :: Proxy (Eval EvalEnv2 Ph4)
 
 type family UnpackTrue (v :: Maybe Value) :: Bool where
   UnpackTrue ('Just ('Bool 'True)) = 'True

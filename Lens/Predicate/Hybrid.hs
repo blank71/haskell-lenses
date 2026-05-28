@@ -1,23 +1,14 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             TypeApplications, AllowAmbiguousTypes, OverloadedLabels #-}
-
-
 module Lens.Predicate.Hybrid where
 
-import Data.Type.Set
-import GHC.TypeLits
-import GHC.OverloadedLabels (IsLabel(..))
-import System.IO.Unsafe
-
 import Common
+import Data.Type.Set
+import GHC.OverloadedLabels (IsLabel (..))
+import GHC.TypeLits
 import Lens.Predicate.Base
-
-import qualified Lens.Predicate.Dynamic as DP
 import qualified Lens.Predicate.Base as P
+import qualified Lens.Predicate.Dynamic as DP
 import qualified Lens.Predicate.Precedence as QP
+import System.IO.Unsafe
 
 type DPhrase = DP.Phrase
 
@@ -78,7 +69,11 @@ ds v = HPred (P.Constant $ DP.String v)
 db :: Bool -> HPhrase ('P.Erased '[] Bool)
 db v = HPred (P.Constant $ DP.Bool v)
 
-ifthen :: forall pcond pthen pelse. HPhrase pcond -> HPhrase pthen -> HPhrase pelse ->
+ifthen ::
+  forall pcond pthen pelse.
+  HPhrase pcond ->
+  HPhrase pthen ->
+  HPhrase pelse ->
   HPhrase (P.IfThen pcond pthen pelse)
 ifthen (HPred pcond) (HPred pthen) (HPred pelse) =
   HPred $ P.Case (Just pcond) [(P.Constant $ DP.Bool True, pthen)] pelse

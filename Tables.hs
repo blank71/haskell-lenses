@@ -1,15 +1,9 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             AllowAmbiguousTypes, TypeApplications #-}
-
 module Tables where
 
 import Common
-import Label
-import GHC.TypeLits
 import Data.Type.Set
+import GHC.TypeLits
+import Label
 
 type Tables = [Symbol]
 
