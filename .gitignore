@@ -1,4 +1,6 @@
 .#*
+.direnv
+.stack-work
 test.*
 *.hi
 *.o
