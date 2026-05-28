@@ -36,7 +36,8 @@
 
           hPkgs.ghc # GHC compiler in the desired version (will be available on PATH)
           # hPkgs.ghcid # Continuous terminal Haskell compile checker
-          # hPkgs.ormolu # Haskell formatter
+          hPkgs.ormolu # Haskell formatter
+          pkgs.haskellPackages.cabal-fmt # Haskell formatter for cabal files
           # hPkgs.hlint # Haskell codestyle checker
           # hPkgs.hoogle # Lookup Haskell documentation
           hPkgs.haskell-language-server # LSP server for editor
