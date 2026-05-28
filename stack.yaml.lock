@@ -3,7 +3,14 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/topics/lock_files
 
-packages: []
+packages:
+- completed:
+    hackage: type-level-sets-0.8.9.0@sha256:37845591544072196cf8c2f9eb8b64a9e6b3e13d3a8e432a7fd99defe9a2a7dd,3126
+    pantry-tree:
+      sha256: 1c395ca68263cb3af6de7c60e6e2900a397dad74a9a042ff539f7fb4fdbf080f
+      size: 382
+  original:
+    hackage: type-level-sets-0.8.9.0
 snapshots:
 - completed:
     sha256: 7ea31a280c56bf36ff591a7397cc384d0dff622e7f9e4225b47d8980f019a0f0
