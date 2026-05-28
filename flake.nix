@@ -1,41 +1,41 @@
 # https://docs.haskellstack.org/en/v3.9.3/topics/nix_integration/#supporting-both-nix-and-non-nix-developers
 {
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  inputs.nixpkgs-20-09.url = "github:NixOS/nixpkgs/release-20.09";
+  inputs.nixpkgs-release.url = "github:NixOS/nixpkgs/release-23.05";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs =
     {
       self,
       nixpkgs,
-      nixpkgs-20-09,
+      nixpkgs-release,
       flake-utils,
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        pkgs-20-09 = nixpkgs-20-09.legacyPackages.${system};
-        inherit (pkgs-20-09) haskell;
+        pkgs-release = nixpkgs-release.legacyPackages.${system};
+        inherit (pkgs-release) haskell;
 
         # Use the default GHC from nixpkgs to avoid removed compiler sets.
         # If you need a specific GHC, switch to pkgs.haskell.packages.ghcXYZ.
         # hPkgs = pkgs.haskellPackages"; # no specific GHC version, will use the default one from nixpkgs
-        hPkgs = haskell.packages.ghc865;
+        hPkgs = haskell.packages.ghc8107;
 
         myDevTools = [
           # For install ghc-8.6.5 through stack
-          pkgs-20-09.gmp
-          pkgs-20-09.libffi
-          pkgs-20-09.ncurses5
+          pkgs-release.gmp
+          pkgs-release.libffi
+          pkgs-release.ncurses5
 
           # external deps for postgresql-simple
-          pkgs-20-09.postgresql
+          pkgs-release.postgresql
           # pkgs.postgresql.pg_config # if use nixos-unstable, pg_config is not available in pkgs.postgresql
 
           hPkgs.ghc # GHC compiler in the desired version (will be available on PATH)
           # hPkgs.ghcid # Continuous terminal Haskell compile checker
-          hPkgs.ormolu # Haskell formatter
+          # hPkgs.ormolu # Haskell formatter
           pkgs.haskellPackages.cabal-fmt # Haskell formatter for cabal files
           # hPkgs.hlint # Haskell codestyle checker
           # hPkgs.hoogle # Lookup Haskell documentation
