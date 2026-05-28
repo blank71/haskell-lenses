@@ -3,34 +3,32 @@
 -}
 module Lens.Predicate.Compile where
 
-import GHC.TypeLits
-import Data.Type.Set (Proxy(..))
-import Data.Map.Strict ((!))
-
 import qualified Data.List as List
+import Data.Map.Strict ((!))
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-
-import Lens.Predicate.Dynamic (DPhrase, Value, BoxValue, box)
-import Lens.Record.Base (Row)
-
-import qualified Lens.Predicate.Dynamic as DP
+import Data.Type.Set (Proxy (..))
+import GHC.TypeLits
 import qualified Lens.Predicate.Base as P
+import Lens.Predicate.Dynamic (BoxValue, DPhrase, Value, box)
+import qualified Lens.Predicate.Dynamic as DP
+import Lens.Record.Base (Row)
 import qualified Lens.Record.Base as R
 
 class LookupMap rt where
   lookupMap :: Map.Map String (Row rt -> Value)
 
 instance LookupMap '[] where
- lookupMap = Map.empty
+  lookupMap = Map.empty
 
 instance (KnownSymbol k, LookupMap rt, BoxValue t) => LookupMap ('(k, t) ': rt) where
-  lookupMap = Map.insert (symbolVal (Proxy :: Proxy k)) thisF extMap where
-    thisF :: Row ('(k, t) ': rt) -> Value
-    thisF (R.Cons v _) = box v
-    extMap = Map.map upd $ lookupMap @rt
-    upd :: (Row rt -> Value) -> (Row ('(k, t) ': rt) -> Value)
-    upd f (R.Cons _ r) = f r
+  lookupMap = Map.insert (symbolVal (Proxy :: Proxy k)) thisF extMap
+    where
+      thisF :: Row ('(k, t) ': rt) -> Value
+      thisF (R.Cons v _) = box v
+      extMap = Map.map upd $ lookupMap @rt
+      upd :: (Row rt -> Value) -> (Row ('(k, t) ': rt) -> Value)
+      upd f (R.Cons _ r) = f r
 
 log_and :: Value -> Value -> Value
 log_and (DP.Bool True) (DP.Bool True) = DP.Bool True
@@ -60,30 +58,35 @@ unary_appl :: P.UnaryOperator -> Value -> Value
 unary_appl (P.UnaryMinus) (DP.Int i) = DP.Int $ -i
 unary_appl (P.Negate) (DP.Bool b) = DP.Bool $ not b
 
-{-| Compile the dynamic predicate into a function taking a row and returning the computed value. -}
+-- | Compile the dynamic predicate into a function taking a row and returning the computed value.
 compile :: forall rt. LookupMap rt => DPhrase -> (Row rt -> Value)
-compile (P.Constant v) = \ _ ->  v
+compile (P.Constant v) = \_ -> v
 compile (P.Var v) = lookupMap @rt ! v
-compile (P.InfixAppl op p1 p2) = \r -> fop (f1 r) (f2 r) where
-  fop = infix_appl op
-  f1 = compile p1
-  f2 = compile p2
-compile (P.UnaryAppl op p) = \r -> fop (f r) where
-  fop = unary_appl op
-  f = compile p
-compile (P.In ids vs) = (\r -> DP.Bool $ Set.member (fval r) valset) where
-  lookups = map (\i -> lookupMap @rt ! i) ids
-  fval = (\r -> map (\v -> v r) lookups)
-  valset = Set.fromList vs
+compile (P.InfixAppl op p1 p2) = \r -> fop (f1 r) (f2 r)
+  where
+    fop = infix_appl op
+    f1 = compile p1
+    f2 = compile p2
+compile (P.UnaryAppl op p) = \r -> fop (f r)
+  where
+    fop = unary_appl op
+    f = compile p
+compile (P.In ids vs) = (\r -> DP.Bool $ Set.member (fval r) valset)
+  where
+    lookups = map (\i -> lookupMap @rt ! i) ids
+    fval = (\r -> map (\v -> v r) lookups)
+    valset = Set.fromList vs
 compile (P.Case p cases other) =
-  (\r ->
-    let match = f r in
-    case List.find (\(p1, _) -> p1 r == match) fcases of
-    Just (_, p2) -> p2 r
-    Nothing -> fother r) where
-  fdef = (\_ -> DP.Bool True)
-  f = case p of
+  ( \r ->
+      let match = f r
+       in case List.find (\(p1, _) -> p1 r == match) fcases of
+            Just (_, p2) -> p2 r
+            Nothing -> fother r
+  )
+  where
+    fdef = (\_ -> DP.Bool True)
+    f = case p of
       Just jp -> compile jp
       Nothing -> fdef
-  fcases = map (\(p1,p2) -> (compile @rt p1, compile @rt p2)) cases
-  fother = compile other
+    fcases = map (\(p1, p2) -> (compile @rt p1, compile @rt p2)) cases
+    fother = compile other

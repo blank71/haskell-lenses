@@ -1,9 +1,9 @@
 module Tables where
 
 import Common
-import Label
-import GHC.TypeLits
 import Data.Type.Set
+import GHC.TypeLits
+import Label
 
 type Tables = [Symbol]
 

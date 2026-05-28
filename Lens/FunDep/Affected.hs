@@ -1,17 +1,15 @@
 module Lens.FunDep.Affected where
 
-import Data.Type.Set (Proxy(..))
-import qualified Data.Set as Set
-
 import Common
-import Lens.Predicate.Dynamic (DPhrase, BoxValue, box)
-import FunDep (FunDep(..), Left)
-import Lens.Record.Base (Env)
-import Lens.Record.Sorted (project, RecordsSet)
-
-import qualified Lens.Predicate.Dynamic as DP
+import qualified Data.Set as Set
+import Data.Type.Set (Proxy (..))
+import FunDep (FunDep (..), Left)
 import qualified Lens.Predicate.Base as P
+import Lens.Predicate.Dynamic (BoxValue, DPhrase, box)
+import qualified Lens.Predicate.Dynamic as DP
+import Lens.Record.Base (Env)
 import qualified Lens.Record.Base as R
+import Lens.Record.Sorted (RecordsSet, project)
 import qualified Value as V
 
 class ToDynamic rt where
@@ -32,8 +30,12 @@ class Affected (fds :: [FunDep]) (rt :: Env) where
 instance Affected '[] rt where
   affected _ = P.Constant (DP.Bool False)
 
-instance (Recoverable (Left fd) [String], R.Project (Left fd) rt, Affected fds rt, ToDynamic (R.ProjectEnv (Left fd) rt)) =>
-  Affected (fd ': fds) rt where
-  affected rt = DP.disjunction [
-    P.In (recover @(Left fd) Proxy) (toDPList $ Set.toList $ project @(Left fd) rt),
-    affected @fds rt]
+instance
+  (Recoverable (Left fd) [String], R.Project (Left fd) rt, Affected fds rt, ToDynamic (R.ProjectEnv (Left fd) rt)) =>
+  Affected (fd ': fds) rt
+  where
+  affected rt =
+    DP.disjunction
+      [ P.In (recover @(Left fd) Proxy) (toDPList $ Set.toList $ project @(Left fd) rt),
+        affected @fds rt
+      ]

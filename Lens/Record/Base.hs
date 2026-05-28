@@ -1,18 +1,15 @@
 module Lens.Record.Base where
 
+import Common
 import Control.DeepSeq
 import Data.List
 import Data.Type.Bool
-import Data.Type.Set (Proxy(..), (:++))
-import GHC.TypeLits
-
+import Data.Type.Set (Proxy (..), (:++))
 import qualified Database.PostgreSQL.Simple.FromField as Fld
-
-import Common
-import Label
 import Database.PostgreSQL.Simple.FromRow
-import Database.PostgreSQL.Simple.Types(Only(..))
-
+import Database.PostgreSQL.Simple.Types (Only (..))
+import GHC.TypeLits
+import Label
 import qualified Lens.Types as T
 import qualified Value
 
@@ -24,16 +21,16 @@ class RecoverEnv e where
 instance RecoverEnv '[] where
   recover_env Proxy = []
 
-instance (KnownSymbol k, Recoverable v T.Type, RecoverEnv xs) => RecoverEnv ('(k,v) ': xs) where
+instance (KnownSymbol k, Recoverable v T.Type, RecoverEnv xs) => RecoverEnv ('(k, v) ': xs) where
   recover_env Proxy = (symbolVal (Proxy :: Proxy k), T.recover_type (Proxy :: Proxy v)) : recover_env (Proxy :: Proxy xs)
 
 type family VarsEnv (env :: Env) :: [Symbol] where
   VarsEnv '[] = '[]
-  VarsEnv ( '(k, v) ': env) = k ': (VarsEnv env)
+  VarsEnv ('(k, v) ': env) = k ': (VarsEnv env)
 
 type family RemoveEnv (vars :: [Symbol]) (env :: Env) where
   RemoveEnv vs '[] = '[]
-  RemoveEnv vs ( '(k, v) ': xs) = If (IsElement k vs) (RemoveEnv vs xs) ( '(k, v) ': RemoveEnv vs xs)
+  RemoveEnv vs ('(k, v) ': xs) = If (IsElement k vs) (RemoveEnv vs xs) ('(k, v) ': RemoveEnv vs xs)
 
 type family Intersection (e1 :: Env) (e2 :: Env)
 
@@ -45,7 +42,7 @@ type family EvidType (env :: Env) (s :: InEnvEvid) :: * where
   EvidType ('(_, val) ': _) 'Take = val
   EvidType (_ ': xs) ('Skip evid) = EvidType xs evid
 
-type family LookupTypeMaybe (env :: Env) (s :: Symbol) :: Maybe * where
+type family LookupTypeMaybe (env :: Env) (s :: Symbol) :: Maybe (*) where
   LookupTypeMaybe '[] _ = 'Nothing
   LookupTypeMaybe ('(key, val) ': xs) key = 'Just val
   LookupTypeMaybe (_ ': xs) key = LookupTypeMaybe xs key
@@ -75,12 +72,11 @@ type family EnvSubset (e1 :: Env) (e2 :: Env) where
   EnvSubset ('(key, val) ': e1) e2 = (LookupTypeMaybe e2 key ~ 'Just val, EnvSubset e1 e2)
   EnvSubset '[] _ = ()
 
-
 -- Row data type
 
 data Row (e :: Env) where
   Empty :: Row '[]
-  Cons :: (Ord t, Eq t) => t -> Row env -> Row ('( key, t) ': env)
+  Cons :: (Ord t, Eq t) => t -> Row env -> Row ('(key, t) ': env)
 
 instance NFData (Row '[]) where rnf = rwhnf
 
@@ -101,14 +97,13 @@ class Fields (e :: Env) where
 instance Fields '[] where
   fields Empty = []
 
-instance (KnownSymbol k, Show t, Fields xs) => Fields ( '(k, t) ': xs) where
+instance (KnownSymbol k, Show t, Fields xs) => Fields ('(k, t) ': xs) where
   fields (Cons v r) = (symbolVal (Proxy :: Proxy k) ++ " = " ++ show v) : fields r
 
 instance Fields e => Show (Row e) where
-  show r = "{ " ++ flds ++ " }" where
-    flds = concat $ intersperse ", " $ fields r
-
-
+  show r = "{ " ++ flds ++ " }"
+    where
+      flds = concat $ intersperse ", " $ fields r
 
 -- Row Fetching
 
@@ -118,30 +113,28 @@ class FetchRow t (i :: InEnvEvid) r where
 instance FetchRow t 'Take (Row ('(s, t) ': env)) where
   intfetch (Cons v _) = v
 
-instance (FetchRow t evid (Row env)) => FetchRow t ('Skip evid) (Row ('(so, to) ': env))  where
+instance (FetchRow t evid (Row env)) => FetchRow t ('Skip evid) (Row ('(so, to) ': env)) where
   intfetch (Cons _ row) = intfetch @t @evid row
 
-type Fetchable s env t evid = (
-  t ~ EvidType env evid,
-  Ord t,
-  Eq t,
-  evid ~ Find env s,
-  FetchRow t evid (Row env))
+type Fetchable s env t evid =
+  ( t ~ EvidType env evid,
+    Ord t,
+    Eq t,
+    evid ~ Find env s,
+    FetchRow t evid (Row env)
+  )
 
 -- type Test s env t = forall evid. Fetchable s env t evid
 
 fetch :: forall s env t evid. Fetchable s env t evid => Row env -> t
 fetch row = intfetch @t @evid row
 
-
-
 type family UpdateType (s :: Symbol) (t :: *) (env :: Env) :: Env where
   UpdateType _ _ '[] = '[]
   UpdateType s t ('(s, _) ': env) = '(s, t) ': env
-  UpdateType s t ('(k,v) ': env) = '(k, v) ': (UpdateType s t env)
+  UpdateType s t ('(k, v) ': env) = '(k, v) ': (UpdateType s t env)
 
 type Same s t k v env = UpdateType s t ('(k, v) : env) ~ ('(k, v) : UpdateType s t env)
-
 
 -- Row Updating
 
@@ -162,16 +155,15 @@ instance (UpdateRow s t env ('Just ev)) => UpdateRow s t ('(k, v) ': env) ('Just
 instance UpdateRow s t env 'Nothing where
   intupdate v row = Cons v row
 
-type Updatable s t env tnew evid = (
-  evid ~ FindMaybe env s,
-  UpdateRow s t env evid,
-  tnew ~ SetType s t env evid,
-  Ord t)
+type Updatable s t env tnew evid =
+  ( evid ~ FindMaybe env s,
+    UpdateRow s t env evid,
+    tnew ~ SetType s t env evid,
+    Ord t
+  )
 
 update :: forall s t env tnew evid. (Updatable s t env tnew evid) => t -> Row env -> Row tnew
 update v row = intupdate @s @t @env @(FindMaybe env s) v row
-
-
 
 -- Revision
 
@@ -185,8 +177,10 @@ type family RevisableEvid (rt :: Env) (rt' :: Env) where
 instance IntRevisable rt '[] ('Nothing) where
   intrevise r _ = r
 
-instance IntRevisable rs1 rs2 (RevisableEvid rs1 rs2) =>
-  IntRevisable ('(k, t) ':  rs1) ('(k, t) ': rs2) ('Just 'Take) where
+instance
+  IntRevisable rs1 rs2 (RevisableEvid rs1 rs2) =>
+  IntRevisable ('(k, t) ': rs1) ('(k, t) ': rs2) ('Just 'Take)
+  where
   intrevise (Cons _ row) (Cons v rst) = Cons v (intrevise @rs1 @rs2 @(RevisableEvid rs1 rs2) row rst)
 
 instance IntRevisable rs1 rs2 ('Just evid) => IntRevisable ('(k, t) ': rs1) rs2 ('Just ('Skip evid)) where
@@ -219,7 +213,6 @@ type NormaliseEnv (e :: Env) = ProjectEnv (SymAsSet (VarsEnv e)) e
 normalise :: Normalisable e => Row e -> Row (NormaliseEnv e)
 normalise (r :: Row e) = project @(SymAsSet (VarsEnv e)) r
 
-
 -- Join
 
 type family InterCols (e1 :: Env) (e2 :: Env) :: [Symbol] where
@@ -247,20 +240,18 @@ type family JoinEnv (e1 :: Env) (e2 :: Env) :: Env where
 
 append :: Row rt -> Row rt' -> Row (rt :++ rt')
 append Empty rt = rt
-append (Cons v rt) rt' = Cons v (append rt  rt')
+append (Cons v rt) rt' = Cons v (append rt rt')
 
 -- Examples
 
-
-row1 :: Row '[ '( "A", Int), '("B", String)]
+row1 :: Row '[ '("A", Int), '("B", String)]
 row1 = Cons 5 $ Cons "h" Empty
 
 row2 :: Row '[ '("B", String)]
 row2 = Cons "h" Empty
 
-row3 :: Row '[ '( "A", Int), '("C", Bool), '("B", String)]
+row3 :: Row '[ '("A", Int), '("C", Bool), '("B", String)]
 row3 = Cons 5 $ Cons True $ Cons "h" Empty
-
 
 -- FetchRow
 
@@ -269,7 +260,6 @@ instance FromRow (Row '[]) where
 
 instance (Ord t, Fld.FromField t, FromRow (Row xs)) => FromRow (Row ('(k, t) ': xs)) where
   fromRow = Cons <$> field <*> fromRow @(Row xs)
-
 
 -- Equal
 comp :: Row e -> Row e -> Ordering
@@ -287,7 +277,6 @@ instance Eq (Row e) where
 
 instance Ord (Row e) where
   compare r1 r2 = comp r1 r2
-
 
 -- Helper Syntax
 
@@ -318,7 +307,7 @@ instance (Req t1, Req t2, Req t3, Req t4) => ToRow '[ '(k1, t1), '(k2, t2), '(k3
 instance (Req t1, Req t2, Req t3, Req t4, Req t5) => ToRow '[ '(k1, t1), '(k2, t2), '(k3, t3), '(k4, t4), '(k5, t5)] (t1, t2, t3, t4, t5) where
   toRow (v1, v2, v3, v4, v5) = Cons v1 $ Cons v2 $ Cons v3 $ Cons v4 $ Cons v5 Empty
 
---fetch :: forall (s :: Symbol) (typ :: Types.Type) (env :: Env).
---fetch :: forall (s :: Symbol) (typ :: Types.Type) (env :: Env).
+-- fetch :: forall (s :: Symbol) (typ :: Types.Type) (env :: Env).
+-- fetch :: forall (s :: Symbol) (typ :: Types.Type) (env :: Env).
 --  InEnv env s typ => Row env -> (Types.HaskellType typ)
 -- fetch row = 5

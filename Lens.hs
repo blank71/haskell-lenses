@@ -1,6 +1,7 @@
 module Lens where
 
 import Control.DeepSeq (NFData)
+import Control.DeepSeq (NFData)
 import GHC.TypeLits
 import Data.Type.Set ((:++), Proxy(..))
 import Database.PostgreSQL.Simple.FromRow

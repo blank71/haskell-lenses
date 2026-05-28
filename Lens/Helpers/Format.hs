@@ -1,8 +1,8 @@
 module Lens.Helpers.Format where
 
-import Data.Text.Format(build, Only(..))
-import Data.Text.Lazy.Builder(Builder)
-import Data.Text.Buildable(Buildable)
+import Data.Text.Buildable (Buildable)
+import Data.Text.Format (Only (..), build)
+import Data.Text.Lazy.Builder (Builder)
 
 build_sep :: (Buildable sep, Buildable a) => sep -> [a] -> Builder
 build_sep _ [] = build "" ()
