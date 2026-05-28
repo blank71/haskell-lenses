@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts, ScopedTypeVariables, TypeApplications, DataKinds,
-             AllowAmbiguousTypes, OverloadedLabels #-}
-
 module Lens.Debug.Timing where
 
 import Control.DeepSeq

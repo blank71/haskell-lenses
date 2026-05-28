@@ -1,13 +1,6 @@
 {-
   Compilation is used to turn dynamic predicates into executable Haskell functions.
 -}
-
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             TypeApplications, OverloadedStrings #-}
-
 module Lens.Predicate.Compile where
 
 import GHC.TypeLits

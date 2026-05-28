@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts, ScopedTypeVariables, TypeApplications, DataKinds,
-             AllowAmbiguousTypes, OverloadedLabels #-}
-
 module Benchmark where
 
 import Control.Exception (assert)

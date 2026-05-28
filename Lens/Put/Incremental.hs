@@ -1,8 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables, TypeApplications,
-             AllowAmbiguousTypes, KindSignatures, DataKinds, TypeOperators,
-             BangPatterns,
-             TypeInType, GADTs, UndecidableInstances, ConstraintKinds #-}
-
 module Lens.Put.Incremental where
 
 import Data.Type.Set (Proxy(..), (:++))
@@ -226,4 +221,3 @@ put_wif c l rs =
   do unchanged <- query c l
      let delta = Delta.fromSet rs #- Delta.fromList unchanged
      put_delta c l delta True
-

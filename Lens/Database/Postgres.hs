@@ -1,7 +1,3 @@
-{-# LANGUAGE FlexibleContexts, ScopedTypeVariables, MultiParamTypeClasses,
-             DataKinds, PolyKinds, KindSignatures, UndecidableInstances,
-             TypeApplications #-}
-
 module Lens.Database.Postgres (PostgresDatabase, query) where
 
 import Data.Either (fromRight)

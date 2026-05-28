@@ -1,7 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses, ScopedTypeVariables, TypeApplications,
-             AllowAmbiguousTypes, KindSignatures, DataKinds, TypeOperators,
-             TypeInType, GADTs, UndecidableInstances, ConstraintKinds #-}
-
 module Lens.Put.Classic where
 
 import Control.DeepSeq

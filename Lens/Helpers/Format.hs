@@ -1,9 +1,3 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             AllowAmbiguousTypes, TypeApplications, OverloadedStrings #-}
-
 module Lens.Helpers.Format where
 
 import Data.Text.Format(build, Only(..))

@@ -1,7 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables, TypeApplications, AllowAmbiguousTypes,
-             FlexibleContexts, ConstraintKinds, UndecidableInstances,
-             MultiParamTypeClasses, RankNTypes #-}
-
 module Lens.Record.Sorted where
 
 import Data.Map.Strict ((!?))

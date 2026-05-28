@@ -1,7 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables, GADTs, AllowAmbiguousTypes, TypeApplications,
-             ConstraintKinds, PolyKinds, DataKinds, MultiParamTypeClasses,
-             KindSignatures #-}
-
 module Lens.Database.Base where
 
 import Data.Set (fromList, Set)

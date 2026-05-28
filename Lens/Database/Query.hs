@@ -1,9 +1,3 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             AllowAmbiguousTypes, TypeApplications, OverloadedStrings #-}
-
 module Lens.Database.Query where
 
 import qualified Data.Set as Set
@@ -245,4 +239,3 @@ run_multiple action qs =
   if null qs
   then return ()
   else action $ combine_queries qs
-

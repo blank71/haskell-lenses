@@ -1,9 +1,3 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             AllowAmbiguousTypes, TypeApplications, RankNTypes, QuantifiedConstraints #-}
-
 module Lens.Record.Base where
 
 import Control.DeepSeq

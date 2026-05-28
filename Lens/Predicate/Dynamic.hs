@@ -1,9 +1,3 @@
-{-# LANGUAGE GADTs, DataKinds, KindSignatures, TypeOperators, TypeFamilies,
-             MultiParamTypeClasses, FlexibleInstances, PolyKinds,
-             FlexibleContexts, UndecidableInstances, ConstraintKinds,
-             ScopedTypeVariables, TypeInType, TypeOperators, StandaloneDeriving,
-             TypeApplications, OverloadedStrings #-}
-
 module Lens.Predicate.Dynamic where
 
 import Control.DeepSeq
@@ -169,4 +163,3 @@ print_query (P.Case inp cases other) _ =
 
 print :: Phrase -> IO Builder
 print p = print_query p QP.first
-

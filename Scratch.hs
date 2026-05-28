@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts, ScopedTypeVariables, TypeApplications, DataKinds,
-             AllowAmbiguousTypes, OverloadedLabels #-}
-
 module Scratch where
 
 import GHC.Types (Nat)
