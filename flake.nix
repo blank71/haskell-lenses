@@ -93,7 +93,6 @@
         db-init = pkgs.writeShellScriptBin "${db-script-name}-init" ''
           set -e
           ${db-chech-env}/bin/${db-script-name}-check
-          db_pid_dir="/run/postgresql"
           current_user=$(id -u -n)
 
           initdb -D "${db-path}"
