@@ -29,10 +29,9 @@
           pkgs-20-09.libffi
           pkgs-20-09.ncurses5
 
-          # external deps for haskell-lenses
-          ## postgresql-simple
-          # pkgs.postgresql
-          # pkgs.postgresql.pg_config
+          # external deps for postgresql-simple
+          pkgs-20-09.postgresql
+          # pkgs.postgresql.pg_config # if use nixos-unstable, pg_config is not available in pkgs.postgresql
 
           hPkgs.ghc # GHC compiler in the desired version (will be available on PATH)
           # hPkgs.ghcid # Continuous terminal Haskell compile checker
@@ -46,8 +45,6 @@
           # hPkgs.cabal-install
           stack-wrapped
           pkgs.zlib # External C library needed by some Haskell packages
-
-          pkgs.rust-analyzer
         ];
 
         # Wrap Stack to work with our Nix integration. We do not want to modify
