@@ -63,14 +63,25 @@
           name = "stack"; # will be available as the usual `stack` in terminal
           paths = [ pkgs.stack ];
           buildInputs = [ pkgs.makeWrapper ];
-          postBuild = ''
-            wrapProgram $out/bin/stack \
-              --add-flags "\
-                --no-nix \
-                --system-ghc \
-                --no-install-ghc \
-              "
-          '';
+          postBuild =
+            if system == "aarch64-darwin" then
+              ''
+                wrapProgram $out/bin/stack \
+                  --add-flags "\
+                    --nix \
+                    --system-ghc \
+                    --no-install-ghc \
+                  "
+              ''
+            else
+              ''
+                wrapProgram $out/bin/stack \
+                  --add-flags "\
+                    --no-nix \
+                    --system-ghc \
+                    --no-install-ghc \
+                  "
+              '';
         };
 
         ### custom script to run a local postgres server
