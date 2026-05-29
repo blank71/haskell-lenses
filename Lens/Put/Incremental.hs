@@ -16,7 +16,7 @@ import Delta (Delta, delta_union, negative, positive, (#+), (#-))
 import qualified Delta
 import FunDep
 import Label (AdjustOrder, IsSubset, Subtract)
-import Lens (DeleteStrategy, Droppable, Fds, Joinable, Lens (..), Rt, TableKey, Ts, delete_left, delete_right, setDebugTime)
+import Lens (DeleteStrategy, Droppable, Fds, Joinable, Lens (..), Rt, TableKey, Ts, deleteLeft, deleteRight, setDebugTime)
 import Lens.Database.Base (Columns, LensDatabase (..), LensQuery, execute, query, query_ex)
 import Lens.Database.Query (build_delete, build_insert, build_update, column_map, query_predicate, run_multiple)
 import Lens.Debug.Timing (timed)
@@ -92,7 +92,7 @@ put_delta_join_left c (l1 :: Lens s1) (l2 :: Lens s2) (_ :: Lens s) delta_o =
     or_key (P.Constant (DP.Bool False)) = P.In (recover @(VarsEnv (Rt s2)) @[String] Proxy) (toDPList $ Set.toList $ delta_or)
     or_key p = p
 
-put_delta_join_templ ::
+put_delta_jointTempl ::
   forall c s1 s2 snew joincols.
   (LensQuery c, Joinable s1 s2 snew joincols, R.RecoverEnv (Rt snew), RecoverTables (Ts snew)) =>
   c ->
@@ -102,7 +102,7 @@ put_delta_join_templ ::
   Lens snew ->
   RecordsDelta (Rt snew) ->
   IO (RecordsDelta (Rt s1), RecordsDelta (Rt s2))
-put_delta_join_templ c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta_o =
+put_delta_jointTempl c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta_o =
   do
     qd1 <- Set.fromList <$> query_ex @c @(Rt s1) Proxy c ts1 (column_map l1) pred_m
     qd2 <- Set.fromList <$> query_ex @c @(Rt s2) Proxy c ts2 (column_map l2) pred_n
@@ -122,7 +122,7 @@ put_delta_join_templ c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta
     return (delta_m', delta_n')
   where
     sort_deletes delta_o delta_l_pl =
-      if any (delete_right . delfn) delta_l_pl
+      if any (deleteRight . delfn) delta_l_pl
         then do
           qO <-
             MSet.fromList
@@ -142,7 +142,7 @@ put_delta_join_templ c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta
                   MSet.toSet $
                     (qO `MSet.union` (projMSet $ positive delta_o)) MSet.\\ projMSet (negative delta_o)
           let la = delta_l_pl Set.\\ ll
-          return (ll `Set.union` Set.filter (delete_left . delfn) la, Set.filter (delete_right . delfn) la)
+          return (ll `Set.union` Set.filter (deleteLeft . delfn) la, Set.filter (deleteRight . delfn) la)
         else return (delta_l_pl, Set.empty)
     projMSet set = MSet.map (R.project @joincols @(Rt snew)) $ MSet.fromSet set
     delta_ol = project @(VarsEnv (Rt s1)) $ Delta.positive delta_o
@@ -256,7 +256,7 @@ put_delta c (Select (HPred p) l) delta_n wif =
     tbls = recover_tables @(Ts s) Proxy
 put_delta c l@(Join delfn (l1 :: Lens s1) (l2 :: Lens s2)) delta_o wif =
   do
-    (delta_m, delta_n) <- put_delta_join_templ c delfn l1 l2 l delta_o
+    (delta_m, delta_n) <- put_delta_jointTempl c delfn l1 l2 l delta_o
     put_delta c l1 delta_m wif
     put_delta c l2 delta_n wif
 

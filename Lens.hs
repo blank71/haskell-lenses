@@ -1,7 +1,6 @@
 module Lens where
 
 import Control.DeepSeq (NFData)
-import Control.DeepSeq (NFData)
 import GHC.TypeLits
 import Data.Type.Set ((:++), Proxy(..))
 import Database.PostgreSQL.Simple.FromRow
@@ -27,7 +26,6 @@ import qualified Lens.Types as T
 import qualified Lens.Predicate.Base as P
 import qualified Lens.Record.Base as R
 import qualified Lens.Record.Sorted as RT
-
 
 type family IsIgnoresOutputs (phrase :: SPhrase) (fds :: [FunDep]) :: Bool where
   IsIgnoresOutputs p fds = IsDisjoint (FTV p) (Outputs fds)
@@ -148,7 +146,7 @@ type SelectableExp p rt pred fds =
    SelectImplConstraints rt p pred fds)
 
 type Selectable p s snew =
-  (snew ~ 'Sort (Ts s) (Rt s) (Simplify (p :& (P s))) (Fds s),
+  (snew ~ 'Sort (Ts s) (Rt s) (Simplify (p :& P s)) (Fds s),
    SelectableExp p (Rt s) (P s) (Fds s))
 
 type DropImplConstraints env key rt pred fds rtnew =
@@ -182,13 +180,13 @@ type Debuggable rt =
 
 data DeleteStrategy = DeleteLeft | DeleteBoth | DeleteRight
 
-delete_left :: DeleteStrategy -> Bool
-delete_left DeleteRight = False
-delete_left _ = True
+deleteLeft :: DeleteStrategy -> Bool
+deleteLeft DeleteRight = False
+deleteLeft _ = True
 
-delete_right :: DeleteStrategy -> Bool
-delete_right DeleteLeft = False
-delete_right _ = True
+deleteRight :: DeleteStrategy -> Bool
+deleteRight DeleteLeft = False
+deleteRight _ = True
 
 data Lens (s :: Sort) where
   Prim :: Lensable ('Sort '[table] rt p fds) snew => Lens snew
@@ -217,21 +215,21 @@ data FromRowHack (rt :: Env) where
 
 lrows :: (vars ~ R.TupleType (Rt s), R.ToRow (Rt s) vars) =>
   Lens s -> [vars] -> RecordsSet (Rt s)
-lrows (l :: Lens s) vars = rows @(Rt s) vars
+lrows (l :: Lens s) = rows @(Rt s)
 
 lensToFromRowHack :: Lens s -> FromRowHack (Rt s)
 lensToFromRowHack Prim = Hack
 lensToFromRowHack (Debug l) = lensToFromRowHack l
 lensToFromRowHack (DebugTime _ l) = lensToFromRowHack l
-lensToFromRowHack (Select _ _) = Hack
-lensToFromRowHack (Drop _ _ _) = Hack
-lensToFromRowHack (Join _ _ _) = Hack
+lensToFromRowHack (Select {}) = Hack
+lensToFromRowHack (Drop {}) = Hack
+lensToFromRowHack (Join {}) = Hack
 
-prim_pred :: forall table rt fds p fdsnew s snew.
+primPred :: forall table rt fds p fdsnew s snew.
   (s ~ 'Sort '[table] rt p fds,
   Lensable s snew)
   => Lens snew
-prim_pred = Prim @table @rt @p @fds
+primPred = Prim @table @rt @p @fds
 
 prim :: forall table rt fds fdsnew s snew.
   (s ~ 'Sort '[table] rt DefaultPredicate fds,
@@ -242,10 +240,10 @@ prim = Prim @table @rt @DefaultPredicate @fds
 
 select :: forall p s snew.
   (Selectable p s snew) => HPhrase p -> Lens s -> Lens snew
-select pred l = Select pred l
+select = Select
 
 debug :: forall s. (Debuggable (Rt s)) => Lens s -> Lens s
-debug l = Debug l
+debug = Debug
 
 debugTime :: forall s. (Debuggable (Rt s)) => Lens s -> IO (Lens s)
 debugTime l =
@@ -257,14 +255,16 @@ setDebugTime :: Lens s -> IO ()
 setDebugTime (DebugTime r _) =
   do t <- getCurrentTime
      writeIORef r t
+setDebugTime _ = return ()
 
 getDebugTime :: Lens s -> IO UTCTime
 getDebugTime (DebugTime r _) = readIORef r
+getDebugTime _ = error "Not a DebugTime lens"
 
 dropl :: forall env (key :: [Symbol]) s snew.
   (Droppable env key s snew) =>
   Lens s -> Lens snew
-dropl l = Drop @env @key @s @snew Proxy Proxy l
+dropl = Drop @env @key @s @snew Proxy Proxy
 
 -- RecoverEnv (Rt s)
 
@@ -272,14 +272,14 @@ join :: Joinable s1 s2 snew joincols =>
     Lens s1 ->
     Lens s2 ->
     Lens snew
-join l1 l2 = Join (\_ -> DeleteLeft) l1 l2
+join = Join $ const DeleteLeft
 
-join_templ :: Joinable s1 s2 snew joincols =>
-    ((Row (Rt snew)) -> DeleteStrategy) ->
+jointTempl :: Joinable s1 s2 snew joincols =>
+    (Row (Rt snew) -> DeleteStrategy) ->
     Lens s1 ->
     Lens s2 ->
     Lens snew
-join_templ fn l1 l2 = Join fn l1 l2
+jointTempl = Join
 
 
 lens1 = prim @"test1" @'[ '("A", Int), '("B", String)] @'[ '["A"] --> '["B"]]

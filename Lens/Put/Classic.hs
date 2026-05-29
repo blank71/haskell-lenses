@@ -15,7 +15,7 @@ import qualified Delta
 import FunDep
 import GHC.TypeLits
 import Label (AdjustOrder, IsSubset, Subtract)
-import Lens (DeleteStrategy, Droppable, Fds, Joinable, Lens (..), Rt, Selectable, TableKey, Ts, delete_left, delete_right, setDebugTime)
+import Lens (DeleteStrategy, Droppable, Fds, Joinable, Lens (..), Rt, Selectable, TableKey, Ts, deleteLeft, deleteRight, setDebugTime)
 import Lens.Database.Base (Columns, LensDatabase (..), LensQuery, execute, get, query, query_ex)
 import Lens.Database.Query (build_delete, build_delete_all, build_insert, build_update, column_map, query_predicate)
 import Lens.FunDep.Affected (Affected, ToDynamic, affected, toDPList)
@@ -70,8 +70,8 @@ put_classic_join c delfn (l1 :: Lens s1) (l2 :: Lens s2) _ o =
     let l = join m0 n0 `Set.difference` o
     let ll = join @(Rt snew) l (project @joincols o)
     let la = l Set.\\ ll
-    let m' = m0 `Set.difference` (project @(VarsEnv (Rt s1)) $ ll `Set.union` Set.filter (delete_left . delfn) la)
-    let n' = n0 `Set.difference` (project @(VarsEnv (Rt s2)) $ Set.filter (delete_right . delfn) la)
+    let m' = m0 `Set.difference` (project @(VarsEnv (Rt s1)) $ ll `Set.union` Set.filter (deleteLeft . delfn) la)
+    let n' = n0 `Set.difference` (project @(VarsEnv (Rt s2)) $ Set.filter (deleteRight . delfn) la)
     return (m', n')
   where
     oleft = project @(VarsEnv (Rt s1)) o

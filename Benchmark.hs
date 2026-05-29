@@ -155,7 +155,7 @@ benchmark_2 incremental c =
 benchmark_3_templ delfn incremental c =
   do l1 <- t1dbg
      l2 <- t2dbg
-     l <- debugTime $ join_templ delfn l1 l2
+     l <- debugTime $ jointTempl delfn l1 l2
      (tio, tc) <- make_timed_conn c
      d <- get c l
      let dat = Set.map chrec d
