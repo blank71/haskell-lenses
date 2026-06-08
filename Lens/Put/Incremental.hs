@@ -39,7 +39,7 @@ import qualified Value
 --  DropPut :: (Droppable env key rt1 p1 fds1 rt pred fds, LensQuery c rt) => LensPutable c ts rt1 p1 fds1 -> Lens ts rt p fds -> LensPutable c ts rt p fds
 --  SelectPut :: (Selectable rt p LensQuery c rt) => LensPutable c ts1 rt1 p1 fds1 -> Lens ts rt p fds -> LensPutable c ts rt p fds
 
-put_delta_join_left ::
+putDeltaJoinLeft ::
   forall c s1 s2 snew joincols.
   (LensQuery c, Joinable s1 s2 snew joincols) =>
   c ->
@@ -48,7 +48,7 @@ put_delta_join_left ::
   Lens snew ->
   RecordsDelta (Rt snew) ->
   IO (RecordsDelta (Rt s1), RecordsDelta (Rt s2))
-put_delta_join_left c (l1 :: Lens s1) (l2 :: Lens s2) (_ :: Lens s) delta_o =
+putDeltaJoinLeft c (l1 :: Lens s1) (l2 :: Lens s2) (_ :: Lens s) delta_o =
   do
     qd1 <- Set.fromList <$> query_ex @c @(Rt s1) Proxy c ts1 (column_map l1) pred_m
     qd2 <- Set.fromList <$> query_ex @c @(Rt s2) Proxy c ts2 (column_map l2) pred_n
@@ -59,7 +59,7 @@ put_delta_join_left c (l1 :: Lens s1) (l2 :: Lens s2) (_ :: Lens s) delta_o =
     let delta_l =
           ( join @(Rt s) (positive $ Delta.fromSet qM #+ delta_m0) (positive delta_n')
               `Set.union` join @(Rt s) (positive delta_m0) (positive $ Delta.fromSet qN #+ delta_n'),
-            (join @(Rt s) (negative delta_m0) qN) `Set.union` (join @(Rt s) qM (negative delta_n'))
+            join @(Rt s) (negative delta_m0) qN `Set.union` join @(Rt s) qM (negative delta_n')
           )
             #- delta_o
     let delta_m' =
@@ -89,10 +89,10 @@ put_delta_join_left c (l1 :: Lens s1) (l2 :: Lens s2) (_ :: Lens s) delta_o =
         ]
     -- workaround for weird affected behavior. When no FDS are available search for identical rows
     -- this should probably search for all keys as well as functional dependencies
-    or_key (P.Constant (DP.Bool False)) = P.In (recover @(VarsEnv (Rt s2)) @[String] Proxy) (toDPList $ Set.toList $ delta_or)
+    or_key (P.Constant (DP.Bool False)) = P.In (recover @(VarsEnv (Rt s2)) @[String] Proxy) (toDPList $ Set.toList delta_or)
     or_key p = p
 
-put_delta_jointTempl ::
+putDeltaJointTempl ::
   forall c s1 s2 snew joincols.
   (LensQuery c, Joinable s1 s2 snew joincols, R.RecoverEnv (Rt snew), RecoverTables (Ts snew)) =>
   c ->
@@ -102,7 +102,7 @@ put_delta_jointTempl ::
   Lens snew ->
   RecordsDelta (Rt snew) ->
   IO (RecordsDelta (Rt s1), RecordsDelta (Rt s2))
-put_delta_jointTempl c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta_o =
+putDeltaJointTempl c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta_o =
   do
     qd1 <- Set.fromList <$> query_ex @c @(Rt s1) Proxy c ts1 (column_map l1) pred_m
     qd2 <- Set.fromList <$> query_ex @c @(Rt s2) Proxy c ts2 (column_map l2) pred_n
@@ -113,7 +113,7 @@ put_delta_jointTempl c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta
     let delta_l =
           ( join @(Rt s) (positive $ Delta.fromSet qM #+ delta_m0) (positive delta_n0)
               `Set.union` join @(Rt s) (positive delta_m0) (positive $ Delta.fromSet qN #+ delta_n0),
-            (join @(Rt s) (negative delta_m0) qN) `Set.union` (join @(Rt s) qM (negative delta_n0))
+            join @(Rt s) (negative delta_m0) qN `Set.union` join @(Rt s) qM (negative delta_n0)
           )
             #- delta_o
     (ll, la) <- sort_deletes delta_o $ positive delta_l
@@ -140,7 +140,7 @@ put_delta_jointTempl c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta
           let ll =
                 join @(Rt s) delta_l_pl $
                   MSet.toSet $
-                    (qO `MSet.union` (projMSet $ positive delta_o)) MSet.\\ projMSet (negative delta_o)
+                    qO `MSet.union` projMSet (positive delta_o) MSet.\\ projMSet (negative delta_o)
           let la = delta_l_pl Set.\\ ll
           return (ll `Set.union` Set.filter (deleteLeft . delfn) la, Set.filter (deleteRight . delfn) la)
         else return (delta_l_pl, Set.empty)
@@ -166,18 +166,18 @@ put_delta_jointTempl c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta
         ]
     -- workaround for weird affected behavior. When no FDS are available search for identical rows
     -- this should probably search for all keys as well as functional dependencies
-    or_key (P.Constant (DP.Bool False)) = P.In (recover @(VarsEnv (Rt s2)) @[String] Proxy) (toDPList $ Set.toList $ delta_or)
+    or_key (P.Constant (DP.Bool False)) = P.In (recover @(VarsEnv (Rt s2)) @[String] Proxy) (toDPList $ Set.toList delta_or)
     or_key p = p
 
-put_delta ::
+putDelta ::
   forall c s.
   (RecoverTables (Ts s), R.RecoverEnv (Rt s), LensQuery c, LensDatabase c) =>
   c ->
-  (Lens s) ->
+  Lens s ->
   RecordsDelta (Rt s) ->
   Bool ->
   IO ()
-put_delta c (Prim :: Lens s) delta_m what_if =
+putDelta c (Prim :: Lens s) delta_m what_if =
   do
     qdelete <- mapM (build_delete c tbl) $ Map.keys mapDel
     qupdate <-
@@ -191,7 +191,7 @@ put_delta c (Prim :: Lens s) delta_m what_if =
     if List.null insElems
       then return ()
       else do
-        qinsert <- build_insert c tbl $ insElems
+        qinsert <- build_insert c tbl insElems
         action qinsert
   where
     insElems = Map.elems mapIns
@@ -203,23 +203,23 @@ put_delta c (Prim :: Lens s) delta_m what_if =
     mapUpd = mapPos `Map.intersection` mapNeg
     tbl = head $ recover_tables @(Ts s) Proxy
     action = if what_if then Prelude.print else execute c
-put_delta c (Debug l) delta_m wif =
+putDelta c (Debug l) delta_m wif =
   do
     Prelude.print $ show delta_m
-    put_delta c l delta_m wif
-put_delta c dl@(DebugTime _ l) delta_m wif =
+    putDelta c l delta_m wif
+putDelta c dl@(DebugTime _ l) delta_m wif =
   do
     SR.eval_strict_delta delta_m
     setDebugTime dl
-    put_delta c l delta_m wif
-put_delta c (Drop (Proxy :: Proxy key) (Proxy :: Proxy env) (l :: Lens s1)) delta_n wif =
+    putDelta c l delta_m wif
+putDelta c (Drop (Proxy :: Proxy key) (Proxy :: Proxy env) (l :: Lens s1)) delta_n wif =
   do
     aff <- affectedIO
     let res =
           ( revise_fd @(key --> P.Vars env) (positive delta_m) aff,
             revise_fd @(key --> P.Vars env) (negative delta_m) aff
           )
-    put_delta c l res wif
+    putDelta c l res wif
   where
     cols = column_map l
     affectedIO =
@@ -233,32 +233,32 @@ put_delta c (Drop (Proxy :: Proxy key) (Proxy :: Proxy env) (l :: Lens s1)) delt
       ( join (positive delta_n) envRows,
         join (negative delta_n) envRows
       )
-put_delta c (Select (HPred p) l) delta_n wif =
+putDelta c (Select (HPred p) l) delta_n wif =
   do
     unsat <- Set.fromList <$> query_ex @c @(Rt s) Proxy c tbls cols pred
     let delta_m0 =
-          ( (Delta.fromSet $ merge @(TopologicalSort (Fds s)) unsat (positive delta_n))
+          ( Delta.fromSet (merge @(TopologicalSort (Fds s)) unsat (positive delta_n))
               #- Delta.fromSet unsat
           )
-            #- (Delta.fromSet $ negative delta_n)
+            #- Delta.fromSet (negative delta_n)
     let delta_nh =
           (SR.filter p $ positive delta_m0, SR.filter p $ negative delta_m0)
             #- delta_n
-    put_delta c l (delta_m0 #- delta_nh) wif
+    putDelta c l (delta_m0 #- delta_nh) wif
   where
     pred =
       DP.conjunction
         [ affected @(Fds s) $ Delta.positive delta_n,
           query_predicate l,
-          DP.not $ p
+          DP.not p
         ]
     cols = column_map l
     tbls = recover_tables @(Ts s) Proxy
-put_delta c l@(Join delfn (l1 :: Lens s1) (l2 :: Lens s2)) delta_o wif =
+putDelta c l@(Join delfn (l1 :: Lens s1) (l2 :: Lens s2)) delta_o wif =
   do
-    (delta_m, delta_n) <- put_delta_jointTempl c delfn l1 l2 l delta_o
-    put_delta c l1 delta_m wif
-    put_delta c l2 delta_n wif
+    (delta_m, delta_n) <- putDeltaJointTempl c delfn l1 l2 l delta_o
+    putDelta c l1 delta_m wif
+    putDelta c l2 delta_n wif
 
 type LensPut c s =
   ( RecoverTables (Ts s),
@@ -269,28 +269,16 @@ type LensPut c s =
     NFData (R.Row (Rt s))
   )
 
-put ::
-  forall c s.
-  LensPut c s =>
-  c ->
-  Lens s ->
-  RecordsSet (Rt s) ->
-  IO ()
+put :: forall c s. LensPut c s => c -> Lens s -> RecordsSet (Rt s) -> IO ()
 put c l rs =
   do
     unchanged <- query c l
     let delta = Delta.fromSet rs #- Delta.fromList unchanged
-    put_delta c l delta False
+    putDelta c l delta False
 
-put_wif ::
-  forall c s.
-  LensPut c s =>
-  c ->
-  Lens s ->
-  RecordsSet (Rt s) ->
-  IO ()
-put_wif c l rs =
+putWif :: forall c s. LensPut c s => c -> Lens s -> RecordsSet (Rt s) -> IO ()
+putWif c l rs =
   do
     unchanged <- query c l
     let delta = Delta.fromSet rs #- Delta.fromList unchanged
-    put_delta c l delta True
+    putDelta c l delta True

@@ -26,7 +26,7 @@ instance Recoverable 'False Bool where
   recover Proxy = False
 
 instance KnownSymbol s => Recoverable (s :: Symbol) String where
-  recover p = symbolVal p
+  recover = symbolVal
 
 type family UnpackMaybe (x :: Maybe t) :: t where
   UnpackMaybe ('Just x) = x
@@ -35,7 +35,7 @@ instance Recoverable 'Nothing (Maybe p) where
   recover Proxy = Nothing
 
 instance Recoverable p q => Recoverable ('Just p) (Maybe q) where
-  recover Proxy = Just $ (recover @p @q Proxy)
+  recover Proxy = Just $ recover @p @q Proxy
 
 instance Recoverable '[] [a] where
   recover Proxy = []

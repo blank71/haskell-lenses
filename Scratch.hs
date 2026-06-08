@@ -17,7 +17,7 @@ import Lens.Predicate.Hybrid
 import Lens.Predicate.Base ((:=),Phrase(..))
 import Lens.Database.Base (LensGet, get)
 import Lens.Database.Postgres (PostgresDatabase)
-import Lens.Put.Incremental (put, put_wif, LensPut)
+import Lens.Put.Incremental (put, putWif, LensPut)
 import FunDep
 import Lens.Record.Sorted (RecordsSet, recs)
 import Delta (fromSet)
@@ -45,7 +45,7 @@ test_put_debug :: LensPut PostgresDatabase s =>
   Lens s -> RecordsSet (Rt s) -> IO ()
 test_put_debug l rs =
   do conn <- dbConnect
-     put_wif conn l rs
+     putWif conn l rs
 
 test_put :: LensPut PostgresDatabase s => Lens s -> RecordsSet (Rt s) -> IO ()
 test_put l rs =

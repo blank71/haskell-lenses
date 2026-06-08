@@ -5,7 +5,7 @@ import Database.PostgreSQL.Simple(query_, connect, defaultConnectInfo, connectDa
 import FunDep
 import Lens (prim, join, select, dropl, debug)
 import Lens.Database.Base (LensGet, get)
-import LensPut (put, put_wif)
+import LensPut (put, putWif)
 import Lens.Predicate.Hybrid
 import Lens.Database.Postgres (PostgresDatabase)
 import Lens.Database.Table (setup)
