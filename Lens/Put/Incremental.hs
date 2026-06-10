@@ -2,13 +2,13 @@ module Lens.Put.Incremental where
 
 import Common
 import Control.DeepSeq
+-- import FunDep (FunDep(..), Left, Right, TopologicalSort)
+
 import Data.ByteString.Builder (toLazyByteString)
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
 import qualified Data.MultiSet as MSet
 import qualified Data.Set as Set
--- import FunDep (FunDep(..), Left, Right, TopologicalSort)
-
 import Data.Time.Clock (getCurrentTime)
 import Data.Type.Set (Proxy (..), (:++))
 import Database.PostgreSQL.Simple.FromRow (FromRow (..))
@@ -17,7 +17,7 @@ import qualified Delta
 import FunDep
 import Label (AdjustOrder, IsSubset, Subtract)
 import Lens (DeleteStrategy, Droppable, Fds, Joinable, Lens (..), Rt, TableKey, Ts, deleteLeft, deleteRight, setDebugTime)
-import Lens.Database.Base (Columns, LensDatabase (..), LensQuery, execute, query, query_ex)
+import Lens.Database.Base (Columns, LensDatabase (..), LensQuery, execute, query, queryEx)
 import Lens.Database.Query (build_delete, build_insert, build_update, column_map, query_predicate, run_multiple)
 import Lens.Debug.Timing (timed)
 import Lens.FunDep.Affected (Affected, ToDynamic, affected, toDPList)
@@ -50,12 +50,12 @@ putDeltaJoinLeft ::
   IO (RecordsDelta (Rt s1), RecordsDelta (Rt s2))
 putDeltaJoinLeft c (l1 :: Lens s1) (l2 :: Lens s2) (_ :: Lens s) delta_o =
   do
-    qd1 <- Set.fromList <$> query_ex @c @(Rt s1) Proxy c ts1 (column_map l1) pred_m
-    qd2 <- Set.fromList <$> query_ex @c @(Rt s2) Proxy c ts2 (column_map l2) pred_n
+    qd1 <- Set.fromList <$> queryEx @c @(Rt s1) Proxy c ts1 (column_map l1) pred_m
+    qd2 <- Set.fromList <$> queryEx @c @(Rt s2) Proxy c ts2 (column_map l2) pred_n
     let delta_m0 = Delta.fromSet (merge @(TopologicalSort (Fds s1)) qd1 delta_ol) #- Delta.fromSet qd1
     let delta_n' = Delta.fromSet (merge @(TopologicalSort (Fds s2)) qd2 delta_or) #- Delta.fromSet qd2
-    qM <- Set.fromList <$> query_ex @c @(Rt s1) Proxy c ts1 (column_map l1) (pjoin l1 delta_m0)
-    qN <- Set.fromList <$> query_ex @c @(Rt s2) Proxy c ts2 (column_map l2) (pjoin l2 delta_n')
+    qM <- Set.fromList <$> queryEx @c @(Rt s1) Proxy c ts1 (column_map l1) (pjoin l1 delta_m0)
+    qN <- Set.fromList <$> queryEx @c @(Rt s2) Proxy c ts2 (column_map l2) (pjoin l2 delta_n')
     let delta_l =
           ( join @(Rt s) (positive $ Delta.fromSet qM #+ delta_m0) (positive delta_n')
               `Set.union` join @(Rt s) (positive delta_m0) (positive $ Delta.fromSet qN #+ delta_n'),
@@ -104,12 +104,12 @@ putDeltaJointTempl ::
   IO (RecordsDelta (Rt s1), RecordsDelta (Rt s2))
 putDeltaJointTempl c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta_o =
   do
-    qd1 <- Set.fromList <$> query_ex @c @(Rt s1) Proxy c ts1 (column_map l1) pred_m
-    qd2 <- Set.fromList <$> query_ex @c @(Rt s2) Proxy c ts2 (column_map l2) pred_n
+    qd1 <- Set.fromList <$> queryEx @c @(Rt s1) Proxy c ts1 (column_map l1) pred_m
+    qd2 <- Set.fromList <$> queryEx @c @(Rt s2) Proxy c ts2 (column_map l2) pred_n
     let delta_m0 = Delta.fromSet (merge @(TopologicalSort (Fds s1)) qd1 delta_ol) #- Delta.fromSet qd1
     let delta_n0 = Delta.fromSet (merge @(TopologicalSort (Fds s2)) qd2 delta_or) #- Delta.fromSet qd2
-    qM <- Set.fromList <$> query_ex @c @(Rt s1) Proxy c ts1 (column_map l1) (pjoin l1 delta_m0)
-    qN <- Set.fromList <$> query_ex @c @(Rt s2) Proxy c ts2 (column_map l2) (pjoin l2 delta_n0)
+    qM <- Set.fromList <$> queryEx @c @(Rt s1) Proxy c ts1 (column_map l1) (pjoin l1 delta_m0)
+    qN <- Set.fromList <$> queryEx @c @(Rt s2) Proxy c ts2 (column_map l2) (pjoin l2 delta_n0)
     let delta_l =
           ( join @(Rt s) (positive $ Delta.fromSet qM #+ delta_m0) (positive delta_n0)
               `Set.union` join @(Rt s) (positive delta_m0) (positive $ Delta.fromSet qN #+ delta_n0),
@@ -126,7 +126,7 @@ putDeltaJointTempl c delfn (l1 :: Lens s1) (l2 :: Lens s2) (l :: Lens s) delta_o
         then do
           qO <-
             MSet.fromList
-              <$> query_ex @c @(InterEnv (Rt s1) (Rt s2))
+              <$> queryEx @c @(InterEnv (Rt s1) (Rt s2))
                 Proxy
                 c
                 ts
@@ -202,7 +202,12 @@ putDelta c (Prim :: Lens s) delta_m what_if =
     mapDel = mapNeg Map.\\ mapPos
     mapUpd = mapPos `Map.intersection` mapNeg
     tbl = head $ recover_tables @(Ts s) Proxy
-    action = if what_if then Prelude.print else execute c
+    action qinsert =
+      if what_if
+        then do
+          Prelude.print qinsert
+          execute c qinsert
+        else execute c qinsert
 putDelta c (Debug l) delta_m wif =
   do
     Prelude.print $ show delta_m
@@ -224,7 +229,7 @@ putDelta c (Drop (Proxy :: Proxy key) (Proxy :: Proxy env) (l :: Lens s1)) delta
     cols = column_map l
     affectedIO =
       Set.fromList
-        <$> query_ex @c @(ProjectEnv (key :++ P.Vars env) (Rt s1)) Proxy c tbls cols pred
+        <$> queryEx @c @(ProjectEnv (key :++ P.Vars env) (Rt s1)) Proxy c tbls cols pred
       where
         tbls = recover_tables @(Ts s) Proxy
     pred = DP.conjunction [affected @'[key --> P.Vars env] $ delta_union delta_n, query_predicate l]
@@ -235,7 +240,7 @@ putDelta c (Drop (Proxy :: Proxy key) (Proxy :: Proxy env) (l :: Lens s1)) delta
       )
 putDelta c (Select (HPred p) l) delta_n wif =
   do
-    unsat <- Set.fromList <$> query_ex @c @(Rt s) Proxy c tbls cols pred
+    unsat <- Set.fromList <$> queryEx @c @(Rt s) Proxy c tbls cols pred
     let delta_m0 =
           ( Delta.fromSet (merge @(TopologicalSort (Fds s)) unsat (positive delta_n))
               #- Delta.fromSet unsat
