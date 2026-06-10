@@ -26,7 +26,7 @@ import Lens.Database.Base (LensGet, get)
 import Lens.Database.Table (create_index, setup)
 import Lens.Database.Postgres (PostgresDatabase)
 import Lens.Put.Classic (put_classic)
-import Lens.Put.Incremental (put, put_wif)
+import Lens.Put.Incremental (put, putWif)
 import Lens.Debug.Timing (timed, timing, firstAndLast, timingToMs, make_timed_conn)
 import FunDep
 import Lens.Record.Sorted (RecordsSet, recs)
