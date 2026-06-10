@@ -71,30 +71,30 @@ data TimedDatabase where
   Timed :: (LensDatabase db, LensQuery db, Integral i) => db -> IORef [i] -> Bool -> TimedDatabase
 
 instance LensDatabase TimedDatabase where
-  escapeId (Timed db _ _) str = escapeId db str
-  escapeStr (Timed db _ _) str = escapeStr db str
+  escapeId (Timed db _ _) = escapeId db
+  escapeStr (Timed db _ _) = escapeStr db
 
 instance LensQuery TimedDatabase where
   query (Timed db tm _) l =
     do
       (t, a) <- timed $ query db l
-      modifyIORef tm (\l -> t : l)
+      modifyIORef tm (t :)
       return a
   queryEx pr (Timed db tm _) tables cols_map p =
     do
       () <- p `deepseq` return ()
       (t, a) <- timed $ queryEx pr db tables cols_map p
-      modifyIORef tm (\l -> t : l)
+      modifyIORef tm (t :)
       return a
   execute (Timed db tm True) q =
     do
       (t, a) <- timed $ execute db q
-      modifyIORef tm (\l -> t : l)
+      modifyIORef tm (t :)
       return a
   execute (Timed db tm False) q = execute db q
 
-make_timed_conn :: (LensDatabase db, LensQuery db, Integral i) => db -> IO (IORef [i], TimedDatabase)
-make_timed_conn c =
+makeTimedConn :: (LensDatabase db, LensQuery db, Integral i) => db -> IO (IORef [i], TimedDatabase)
+makeTimedConn c =
   do
     io <- newIORef []
     return (io, Timed c io False)

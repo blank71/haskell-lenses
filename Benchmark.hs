@@ -27,7 +27,7 @@ import Lens.Database.Table (createIndex, setup)
 import Lens.Database.Postgres (PostgresDatabase)
 import Lens.Put.Classic (put_classic)
 import Lens.Put.Incremental (put, putWif)
-import Lens.Debug.Timing (timed, timing, firstAndLast, timingToMs, make_timed_conn)
+import Lens.Debug.Timing (timed, timing, firstAndLast, timingToMs, makeTimedConn)
 import FunDep
 import Lens.Record.Sorted (RecordsSet, recs)
 import Delta (fromSet)
@@ -137,7 +137,7 @@ benchmark_1 incremental c =
 benchmark_2 incremental c =
   do l1 <- t1dbg
      l <- debugTime $ dropl @'[ '("c", 'P.Int 0)] @'[ "a"] l1
-     (tio, tc) <- make_timed_conn c
+     (tio, tc) <- makeTimedConn c
      d <- get c l
      let dat = Set.map chrec d
      (t1,()) <- timed $
@@ -156,7 +156,7 @@ benchmark_3_templ delfn incremental c =
   do l1 <- t1dbg
      l2 <- t2dbg
      l <- debugTime $ jointTempl delfn l1 l2
-     (tio, tc) <- make_timed_conn c
+     (tio, tc) <- makeTimedConn c
      d <- get c l
      let dat = Set.map chrec d
      writeIORef tio []
