@@ -8,3 +8,5 @@ test.*
 test
 TAGS
 dist-newstyle
+
+.zed
