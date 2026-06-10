@@ -1,9 +1,11 @@
 # Create environment with nix flake
 
 Requirement:
+
 - nix
 
 Will be install:
+
 - `ghc`: Haskell compiler
 - `stack`: Haskell build tool
 - and other dependencies for development, some helper scripts
@@ -151,17 +153,19 @@ Then run `stack ghci` command to load `Scratch.hs` in GHCi.
 ```console
 % stack ghci Scratch.hs
 ### insert data to PostgreSQL
-*Scratch> test_put albums unchangedAlbums
+*Scratch> test_put_debug albums unchangedAlbums
 "SELECT \"albums\".\"album\", \"albums\".\"quantity\" FROM \"albums\" WHERE TRUE"
-*Scratch> test_put tracks unchangedTracks
+"INSERT INTO \"albums\" (\"album\", \"quantity\") VALUES ('Disintegration', 6), ('Eponymous', 42), ('Galore', 1), ('Paris', 4), ('Show', 3), ('Wish', 5)"
+*Scratch> test_put_debug tracks unchangedTracks
 "SELECT \"tracks\".\"track\", \"tracks\".\"date\", \"tracks\".\"rating\", \"tracks\".\"album\" FROM \"tracks\" WHERE TRUE"
+"INSERT INTO \"tracks\" (\"track\", \"date\", \"rating\", \"album\") VALUES ('Lovesong', 1989, 5, 'Galore'), ('Lovesong', 1989, 5, 'Paris'), ('Lullaby', 1989, 3, 'Galore'), ('Lullaby', 1989, 3, 'Show'), ('Trust', 1992, 4, 'Wish')"
 
 ### Execute example
 *Scratch> test_get tracks3
 "SELECT \"tracks\".\"track\", \"tracks\".\"rating\", \"tracks\".\"album\", \"albums\".\"quantity\" FROM \"tracks\", \"albums\" WHERE \"tracks\".\"album\" = \"albums\".\"album\" AND \"albums\".\"quantity\" > 2"
 fromList [{ track = "Lovesong", rating = 5, album = "Paris", quantity = 4 },{ track = "Lullaby", rating = 3, album = "Show", quantity = 3 },{ track = "Trust", rating = 4, album = "Wish", quantity = 5 }]
 
-*Scratch> test_put tracks3 examplePut
+*Scratch> test_put_debug tracks3 examplePut
 "SELECT \"tracks\".\"track\", \"tracks\".\"rating\", \"tracks\".\"album\", \"albums\".\"quantity\" FROM \"tracks\", \"albums\" WHERE \"tracks\".\"album\" = \"albums\".\"album\" AND \"albums\".\"quantity\" > 2"
 "SELECT \"tracks\".\"track\", \"tracks\".\"rating\", \"tracks\".\"album\", \"albums\".\"quantity\" FROM \"tracks\", \"albums\" WHERE \"tracks\".\"album\" = \"albums\".\"album\" AND ((\"tracks\".\"track\") IN (('Lovesong'), ('Lullaby')) OR (\"tracks\".\"album\") IN (('Disintegration'), ('Show'))) AND NOT (\"albums\".\"quantity\" > 2)"
 "SELECT \"tracks\".\"track\", \"tracks\".\"date\" FROM \"tracks\", \"albums\" WHERE \"tracks\".\"album\" = \"albums\".\"album\" AND (\"tracks\".\"track\") IN (('Lovesong'), ('Lullaby'), ('Trust'))"
@@ -169,4 +173,19 @@ fromList [{ track = "Lovesong", rating = 5, album = "Paris", quantity = 4 },{ tr
 "SELECT \"albums\".\"album\", \"albums\".\"quantity\" FROM \"albums\" WHERE (\"albums\".\"album\") IN (('Disintegration'), ('Galore'), ('Show'))"
 "SELECT \"tracks\".\"track\", \"tracks\".\"date\", \"tracks\".\"rating\", \"tracks\".\"album\" FROM \"tracks\" WHERE (\"tracks\".\"album\") IN (('Disintegration'), ('Galore'), ('Show'))"
 "SELECT \"albums\".\"album\", \"albums\".\"quantity\" FROM \"albums\" WHERE (\"albums\".\"album\") IN (('Disintegration'))"
+"UPDATE \"tracks\" SET \"date\" = 1989, \"rating\" = 4 WHERE \"track\" = 'Lullaby' AND \"album\" = 'Galore'; UPDATE \"tracks\" SET \"date\" = 1989, \"rating\" = 4 WHERE \"track\" = 'Lullaby' AND \"album\" = 'Show'"
+"DELETE FROM \"tracks\" WHERE \"track\" = 'Lovesong' AND \"album\" = 'Paris'; DELETE FROM \"tracks\" WHERE \"track\" = 'Trust' AND \"album\" = 'Wish'"
+"INSERT INTO \"tracks\" (\"track\", \"date\", \"rating\", \"album\") VALUES ('Lovesong', 1989, 5, 'Disintegration')"
+"UPDATE \"albums\" SET \"quantity\" = 7 WHERE \"album\" = 'Disintegration'"
 ```
+
+test_put albums unchangedAlbums
+test_put albums unchangedAlbums
+test_get albums
+test_get tracks
+test_get tracks1
+test_get tracks2
+test_get tracks3
+test_put tracks3 examplePut
+
+test_get tracks3

@@ -41,8 +41,7 @@ test_get (l :: Lens s) = do
   -- mapM_ Prelude.print res
   -- return res
 
-test_put_debug :: LensPut PostgresDatabase s =>
-  Lens s -> RecordsSet (Rt s) -> IO ()
+test_put_debug :: LensPut PostgresDatabase s => Lens s -> RecordsSet (Rt s) -> IO ()
 test_put_debug l rs =
   do conn <- dbConnect
      putWif conn l rs
