@@ -28,10 +28,10 @@ class LensQuery c where
     c ->
     Lens s ->
     IO [Row rt]
-  query_ex :: (FromRow (Row rt), RecoverEnv rt) => Proxy rt -> c -> Tables -> Columns -> DP.Phrase -> IO [Row rt]
+  queryEx :: (FromRow (Row rt), RecoverEnv rt) => Proxy rt -> c -> Tables -> Columns -> DP.Phrase -> IO [Row rt]
   execute :: c -> Builder -> IO ()
 
-query_ex' ::
+queryEx' ::
   forall c rt.
   (RecoverEnv rt, LensQuery c, FromRow (Row rt)) =>
   c ->
@@ -39,7 +39,7 @@ query_ex' ::
   Columns ->
   DP.Phrase ->
   IO [Row rt]
-query_ex' c t cols_map p = query_ex @c @rt Proxy c t cols_map p
+queryEx' = queryEx @c @rt Proxy
 
 type LensGet s c = (LensQueryable s, FromRow (Row (Rt s)), LensQuery c)
 

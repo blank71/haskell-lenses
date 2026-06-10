@@ -25,7 +25,7 @@ import Database.PostgreSQL.Simple.Internal
 import Database.PostgreSQL.Simple.Types (Query (..), fromQuery)
 import Lens (FromRowHack (..), lensToFromRowHack)
 import Lens.Database.Base (LensDatabase (..), LensQuery (..))
-import Lens.Database.Query (build_query, build_query_ex)
+import Lens.Database.Query (build_query, build_queryEx)
 import Lens.Predicate.Dynamic as DP
 import Lens.Record.Base (recover_env)
 
@@ -38,14 +38,14 @@ lft ::
   IO Builder
 lft conn f arg =
   build "{}"
-    <$> Only
-    <$> BLU.toString
-    <$> fromRight "error"
+    . Only
+    . BLU.toString
+    . fromRight "error"
     <$> f conn (BLU.fromString arg)
 
 instance LensDatabase PostgresDatabase where
-  escapeId c str = lft c escapeIdentifier str
-  escapeStr c str = build "'{}'" <$> Only <$> lft c escapeStringConn str
+  escapeId c = lft c escapeIdentifier
+  escapeStr c str = build "'{}'" . Only <$> lft c escapeStringConn str
 
 instance LensQuery PostgresDatabase where
   query c l = query' c l (lensToFromRowHack l)
@@ -57,9 +57,9 @@ instance LensQuery PostgresDatabase where
           let qstr = BL.toStrict $ TLE.encodeUtf8 $ toLazyText q
           Prelude.print qstr
           query_ c (Query {fromQuery = qstr})
-  query_ex (Proxy :: Proxy rt) c tables cols_map p = do
+  queryEx (Proxy :: Proxy rt) c tables cols_map p = do
     let cols = Prelude.map fst $ recover_env @rt Proxy
-    q <- build_query_ex c tables cols cols_map p
+    q <- build_queryEx c tables cols cols_map p
     let qstr = BL.toStrict $ TLE.encodeUtf8 $ toLazyText q
     Prelude.print qstr
     query_ c (Query {fromQuery = qstr})
