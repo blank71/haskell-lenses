@@ -95,33 +95,33 @@ disjunction [] = P.Constant (Bool True)
 not :: P.Phrase id Value -> P.Phrase id Value
 not p = P.UnaryAppl P.Negate p
 
-print_value :: Value -> IO Builder
-print_value (Bool False) = return $ build "false" ()
-print_value (Bool True) = return $ build "true" ()
-print_value (Int i) = return $ build "{}" (Only i)
-print_value (String s) = return $ build "{}" (Only s)
+printValue :: Value -> IO Builder
+printValue (Bool False) = return $ build "false" ()
+printValue (Bool True) = return $ build "true" ()
+printValue (Int i) = return $ build "{}" (Only i)
+printValue (String s) = return $ build "{}" (Only s)
 
-print_op :: P.Operator -> String
-print_op P.Plus = "+"
-print_op P.LogicalAnd = "AND"
-print_op P.LogicalOr = "OR"
-print_op P.Equal = "="
-print_op P.LessThan = "<"
-print_op P.GreaterThan = ">"
+printOp :: P.Operator -> String
+printOp P.Plus = "+"
+printOp P.LogicalAnd = "AND"
+printOp P.LogicalOr = "OR"
+printOp P.Equal = "="
+printOp P.LessThan = "<"
+printOp P.GreaterThan = ">"
 
-print_unary_op :: P.UnaryOperator -> String
-print_unary_op P.Negate = "NOT"
-print_unary_op P.UnaryMinus = "-"
+printUnaryOp :: P.UnaryOperator -> String
+printUnaryOp P.Negate = "NOT"
+printUnaryOp P.UnaryMinus = "-"
 
-print_query_eq :: Phrase -> QP.Op -> QP.Op -> IO Builder
-print_query_eq p pr npr
-  | compare npr pr == LT = build "({})" <$> Only <$> print_query p npr
-  | otherwise = print_query p npr
+printQuery_eq :: Phrase -> QP.Op -> QP.Op -> IO Builder
+printQuery_eq p pr npr
+  | compare npr pr == LT = build "({})" <$> Only <$> printQuery p npr
+  | otherwise = printQuery p npr
 
-print_query_gr :: Phrase -> QP.Op -> QP.Op -> IO Builder
-print_query_gr p pr npr
-  | compare npr pr == GT = print_query p npr
-  | otherwise = build "({})" <$> Only <$> print_query p npr
+printQuery_gr :: Phrase -> QP.Op -> QP.Op -> IO Builder
+printQuery_gr p pr npr
+  | compare npr pr == GT = printQuery p npr
+  | otherwise = build "({})" <$> Only <$> printQuery p npr
 
 build_sep :: (Buildable sep, Buildable a) => sep -> [a] -> Builder
 build_sep _ [] = build "" ()
@@ -131,45 +131,45 @@ build_sep sep (x : xs) = build "{}{}{}" (x, sep, build_sep sep xs)
 build_sep_str :: Buildable a => String -> [a] -> Builder
 build_sep_str sep xs = build_sep sep xs
 
-print_query :: Phrase -> QP.Op -> IO Builder
-print_query (P.Constant val) _ = print_value val
-print_query (P.Var v) _ = return $ build "{}" v where
-print_query (P.InfixAppl op a b) pr =
+printQuery :: Phrase -> QP.Op -> IO Builder
+printQuery (P.Constant val) _ = printValue val
+printQuery (P.Var v) _ = return $ build "{}" v where
+printQuery (P.InfixAppl op a b) pr =
   let npr = QP.of_op op
    in do
-        left <- print_query_eq a pr npr
-        right <- print_query_eq b pr npr
-        return $ build "{} {} {}" (left, print_op op, right)
-print_query (P.UnaryAppl op a) pr =
+        left <- printQuery_eq a pr npr
+        right <- printQuery_eq b pr npr
+        return $ build "{} {} {}" (left, printOp op, right)
+printQuery (P.UnaryAppl op a) pr =
   let npr = QP.of_unary_op op
    in do
-        arg <- print_query_gr a pr npr
-        return $ build "{} {}" (print_unary_op op, arg)
-print_query (P.In _ []) _ =
+        arg <- printQuery_gr a pr npr
+        return $ build "{} {}" (printUnaryOp op, arg)
+printQuery (P.In _ []) _ =
   return $ build "FALSE" ()
-print_query (P.In cs vals) _ =
+printQuery (P.In cs vals) _ =
   do
     vals <- mapM (build_vals) vals
     return $ build "({}) IN ({})" (build_sep_str ", " cs, build_sep_str ", " $ vals)
   where
     build_vals vs =
       do
-        vals <- mapM print_value vs
+        vals <- mapM printValue vs
         return $ build "({})" $ Only $ build_sep_str ", " $ vals
-print_query (P.Case inp cases other) _ =
+printQuery (P.Case inp cases other) _ =
   do
     inp <- build_inp inp
     cases <- mapM build_case cases
-    other <- print_query other QP.first
+    other <- printQuery other QP.first
     return $ build "CASE {}{} ELSE {} END" (inp, build_sep_str " " $ cases, other)
   where
     build_inp Nothing = return $ build "" ()
-    build_inp (Just x) = build "({}) " <$> Only <$> print_query x QP.first
+    build_inp (Just x) = build "({}) " <$> Only <$> printQuery x QP.first
     build_case (key, val) =
       do
-        cond <- print_query key QP.first
-        act <- print_query val QP.first
+        cond <- printQuery key QP.first
+        act <- printQuery val QP.first
         return $ build "WHEN {} THEN {}" (cond, act)
 
 print :: Phrase -> IO Builder
-print p = print_query p QP.first
+print p = printQuery p QP.first

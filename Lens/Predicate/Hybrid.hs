@@ -79,6 +79,6 @@ ifthen (HPred pcond) (HPred pthen) (HPred pelse) =
   HPred $ P.Case (Just pcond) [(P.Constant $ DP.Bool True, pthen)] pelse
 
 instance Show (HPhrase pred) where
-  show (HPred p) = show $ unsafePerformIO $ DP.print_query p QP.first
+  show (HPred p) = show $ unsafePerformIO $ DP.printQuery p QP.first
 
 -- dynamic @Env1 @'T.Int (ifthen (var @"A" !> var @"B") (di 55) (i @10))

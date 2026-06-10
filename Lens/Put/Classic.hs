@@ -16,8 +16,8 @@ import FunDep
 import GHC.TypeLits
 import Label (AdjustOrder, IsSubset, Subtract)
 import Lens (DeleteStrategy, Droppable, Fds, Joinable, Lens (..), Rt, Selectable, TableKey, Ts, deleteLeft, deleteRight, setDebugTime)
-import Lens.Database.Base (Columns, LensDatabase (..), LensQuery, execute, get, query, query_ex)
-import Lens.Database.Query (build_delete, build_delete_all, build_insert, build_update, column_map, query_predicate)
+import Lens.Database.Base (Columns, LensDatabase (..), LensQuery, execute, get, query, queryEx)
+import Lens.Database.Query (buildDelete, buildDeleteAll, buildInsert, buildUpdate, column_map, query_predicate)
 import Lens.FunDep.Affected (Affected, ToDynamic, affected, toDPList)
 import qualified Lens.Predicate.Base as P
 import Lens.Predicate.Dynamic (DPhrase)
@@ -101,12 +101,12 @@ put_classic ::
   IO ()
 put_classic c (Prim :: Lens s) view =
   do
-    qdelete <- build_delete_all c tbl
+    qdelete <- buildDeleteAll c tbl
     action qdelete
     if Set.null view
       then return ()
       else do
-        qinsert <- build_insert c tbl $ Set.toList view
+        qinsert <- buildInsert c tbl $ Set.toList view
         action qinsert
   where
     tbl = head $ recover_tables @(Ts s) Proxy
@@ -143,12 +143,12 @@ put_classic_wif ::
   IO ()
 put_classic_wif c (Prim :: Lens s) view =
   do
-    qdelete <- build_delete_all c tbl
+    qdelete <- buildDeleteAll c tbl
     action qdelete
     if Set.null view
       then return ()
       else do
-        qinsert <- build_insert c tbl $ Set.toList view
+        qinsert <- buildInsert c tbl $ Set.toList view
         action qinsert
   where
     tbl = head $ recover_tables @(Ts s) Proxy

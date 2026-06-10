@@ -80,10 +80,10 @@ instance LensQuery TimedDatabase where
       (t, a) <- timed $ query db l
       modifyIORef tm (\l -> t : l)
       return a
-  query_ex pr (Timed db tm _) tables cols_map p =
+  queryEx pr (Timed db tm _) tables cols_map p =
     do
       () <- p `deepseq` return ()
-      (t, a) <- timed $ query_ex pr db tables cols_map p
+      (t, a) <- timed $ queryEx pr db tables cols_map p
       modifyIORef tm (\l -> t : l)
       return a
   execute (Timed db tm True) q =

@@ -25,7 +25,7 @@ import Database.PostgreSQL.Simple.Internal
 import Database.PostgreSQL.Simple.Types (Query (..), fromQuery)
 import Lens (FromRowHack (..), lensToFromRowHack)
 import Lens.Database.Base (LensDatabase (..), LensQuery (..))
-import Lens.Database.Query (build_query, build_queryEx)
+import Lens.Database.Query (buildQuery, buildQueryEx)
 import Lens.Predicate.Dynamic as DP
 import Lens.Record.Base (recover_env)
 
@@ -53,13 +53,13 @@ instance LensQuery PostgresDatabase where
       -- query' :: PostgresDatabase -> (Lens ts rt p fds) -> (FromRowHack rt) -> IO [Row rt]
       query' c l Hack =
         do
-          q <- build_query c l
+          q <- buildQuery c l
           let qstr = BL.toStrict $ TLE.encodeUtf8 $ toLazyText q
           Prelude.print qstr
           query_ c (Query {fromQuery = qstr})
   queryEx (Proxy :: Proxy rt) c tables cols_map p = do
     let cols = Prelude.map fst $ recover_env @rt Proxy
-    q <- build_queryEx c tables cols cols_map p
+    q <- buildQueryEx c tables cols cols_map p
     let qstr = BL.toStrict $ TLE.encodeUtf8 $ toLazyText q
     Prelude.print qstr
     query_ c (Query {fromQuery = qstr})

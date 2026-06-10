@@ -28,7 +28,7 @@ class ColumnMap a where
   column_map :: a -> Columns
 
 instance (RecoverTables (Ts s), RecoverEnv (Rt s)) => ColumnMap (Lens s) where
-  column_map (Prim) = Map.fromList $ map f env
+  column_map Prim = Map.fromList $ map f env
     where
       env = recover_env @(Rt s) Proxy
       f (col, typ) = (col, ([table_name], typ))
@@ -49,93 +49,95 @@ instance QueryPredicate (Lens s) where
   query_predicate (Debug l) = query_predicate l
   query_predicate (DebugTime _ l) = query_predicate l
   query_predicate (Drop Proxy Proxy l) = query_predicate l
-  query_predicate (Select (HPred pr) l) = DP.simplify $ P.InfixAppl (P.LogicalAnd) pr (query_predicate l)
-  query_predicate (Join _ l1 l2) = DP.simplify $ P.InfixAppl (P.LogicalAnd) (query_predicate l1) (query_predicate l2)
+  query_predicate (Select (HPred pr) l) = DP.simplify $ P.InfixAppl P.LogicalAnd pr (query_predicate l)
+  query_predicate (Join _ l1 l2) = DP.simplify $ P.InfixAppl P.LogicalAnd (query_predicate l1) (query_predicate l2)
 
-print_op :: P.Operator -> String
-print_op P.Plus = "+"
-print_op P.LogicalAnd = "AND"
-print_op P.LogicalOr = "OR"
-print_op P.Equal = "="
-print_op P.LessThan = "<"
-print_op P.GreaterThan = ">"
+printOp :: P.Operator -> String
+printOp P.Plus = "+"
+printOp P.LogicalAnd = "AND"
+printOp P.LogicalOr = "OR"
+printOp P.Equal = "="
+printOp P.LessThan = "<"
+printOp P.GreaterThan = ">"
 
-print_unary_op :: P.UnaryOperator -> String
-print_unary_op P.Negate = "NOT"
-print_unary_op P.UnaryMinus = "-"
+printUnaryOp :: P.UnaryOperator -> String
+printUnaryOp P.Negate = "NOT"
+printUnaryOp P.UnaryMinus = "-"
 
-eq_priority :: QP.Op -> QP.Op -> Builder -> Builder
-eq_priority pr npr bld
-  | compare npr pr == LT = build "({})" $ Only $ bld
+eqPriority :: QP.Op -> QP.Op -> Builder -> Builder
+eqPriority pr npr bld
+  | npr < pr = build "({})" $ Only bld
   | otherwise = bld
 
-gr_priority :: QP.Op -> QP.Op -> Builder -> Builder
-gr_priority pr npr bld
-  | compare npr pr == GT = bld
-  | otherwise = build "({})" $ Only $ bld
+grPriority :: QP.Op -> QP.Op -> Builder -> Builder
+grPriority pr npr bld
+  | npr > pr = bld
+  | otherwise = build "({})" $ Only bld
 
-print_value :: LensDatabase db => db -> DP.Value -> IO Builder
-print_value db (DP.Bool False) = return $ build "FALSE" ()
-print_value db (DP.Bool True) = return $ build "TRUE" ()
-print_value db (DP.Int i) = return $ build "{}" (Only i)
-print_value db (DP.String s) = escapeStr db s
+printValue :: LensDatabase db => db -> DP.Value -> IO Builder
+printValue db (DP.Bool False) = return $ build "FALSE" ()
+printValue db (DP.Bool True) = return $ build "TRUE" ()
+printValue db (DP.Int i) = return $ build "{}" (Only i)
+printValue db (DP.String s) = escapeStr db s
 
-print_col :: LensDatabase db => db -> String -> String -> IO Builder
-print_col db tbl col =
+printCol :: LensDatabase db => db -> String -> String -> IO Builder
+printCol db tbl col =
   do
     etbl <- escapeId db tbl
     ecol <- escapeId db col
     return $ if tbl == "" then ecol else build "{}.{}" (etbl, ecol)
 
-print_col_t :: LensDatabase db => db -> String -> ([String], T.Type) -> IO Builder
-print_col_t db v (table, _) =
-  print_col db (head table) v
+printColT :: LensDatabase db => db -> String -> ([String], T.Type) -> IO Builder
+printColT db v (table, _) =
+  printCol db (head table) v
 
-print_query :: LensDatabase db => db -> ColumnsOpt -> DP.Phrase -> QP.Op -> IO Builder
-print_query db _ (P.Constant val) _ = print_value db val
-print_query db cols (P.Var v) _ = print_col db tbl col
+printQuery :: LensDatabase db => db -> ColumnsOpt -> DP.Phrase -> QP.Op -> IO Builder
+printQuery db _ (P.Constant val) _ = printValue db val
+printQuery db cols (P.Var v) _ = printCol db tbl col
   where
     (col, tbl) = fromJust $ Map.lookup v cols
-print_query db cols (P.InfixAppl op a b) pr =
+printQuery db cols (P.InfixAppl op a b) pr =
   let npr = QP.of_op op
    in do
-        left <- print_query db cols a npr
-        right <- print_query db cols b npr
-        return $ eq_priority pr npr $ build "{} {} {}" (left, print_op op, right)
-print_query db cols (P.UnaryAppl op a) pr =
+        left <- printQuery db cols a npr
+        right <- printQuery db cols b npr
+        return $ eqPriority pr npr $ build "{} {} {}" (left, printOp op, right)
+printQuery db cols (P.UnaryAppl op a) pr =
   let npr = QP.of_unary_op op
    in do
-        arg <- print_query db cols a npr
-        return $ gr_priority pr npr $ build "{} {}" (print_unary_op op, arg)
-print_query db _ (P.In _ []) _ =
+        arg <- printQuery db cols a npr
+        return $ grPriority pr npr $ build "{} {}" (printUnaryOp op, arg)
+printQuery db _ (P.In _ []) _ =
   return $ build "FALSE" ()
-print_query db cols (P.In cs vals) pr =
+printQuery db cols (P.In cs vals) pr =
   do
-    vals <- mapM (build_vals) vals
-    pcs <- mapM (\v -> print_query db cols (P.Var v) pr) cs
+    vals <- mapM build_vals vals
+    pcs <- mapM (\v -> printQuery db cols (P.Var v) pr) cs
     return $ build "({}) IN ({})" (build_sep_comma pcs, build_sep_comma vals)
   where
     build_vals vs =
       do
-        vals <- mapM (print_value db) vs
+        vals <- mapM (printValue db) vs
         return $ build "({})" $ Only $ build_sep_comma vals
-print_query db cols (P.Case inp cases other) _ =
+printQuery db cols (P.Case inp cases other) _ =
   do
     inp <- build_inp inp
     cases <- mapM build_case cases
-    other <- print_query db cols other QP.first
+    other <- printQuery db cols other QP.first
     return $ build "CASE {}{} ELSE {} END" (inp, build_sep_space cases, other)
   where
     build_inp Nothing = return $ build "" ()
-    build_inp (Just x) = build "({}) " <$> Only <$> print_query db cols x QP.first
+    build_inp (Just x) = build "({}) " . Only <$> printQuery db cols x QP.first
     build_case (key, val) =
       do
-        cond <- print_query db cols key QP.first
-        act <- print_query db cols val QP.first
+        cond <- printQuery db cols key QP.first
+        act <- printQuery db cols val QP.first
         return $ build "WHEN {} THEN {}" (cond, act)
+printQuery _ _ _ _ =
+  error "Impossible: Case with non-query predicate"
 
-cols_opt :: Columns -> State (Int, [[String]]) ColumnsOpt
-cols_opt cols = do
+colsOpt :: Columns -> State (Int, [[String]]) ColumnsOpt
+colsOpt cols = do
   es <- mapM f $ Map.toList cols
   return (Map.fromList $ concat es)
   where
@@ -157,7 +159,7 @@ cols_opt cols = do
       add_eqs $ k : map fst others
       return $ entry k k (head tbls) : others
 
-build_query_ex ::
+buildQueryEx ::
   forall r db.
   (LensDatabase db) =>
   db ->
@@ -166,35 +168,35 @@ build_query_ex ::
   Columns ->
   DP.Phrase ->
   IO Builder
-build_query_ex db tbls cols cols_map p =
+buildQueryEx db tbls cols cols_map p =
   do
     sel <- cols_bld
     from <- tbls_bld
     wher <- pred_bld
     return $ build "SELECT {} FROM {} WHERE {}" (sel, from, wher)
   where
-    (cols', (_, grps)) = runState (cols_opt cols_map) (1, [])
+    (cols', (_, grps)) = runState (colsOpt cols_map) (1, [])
     build_group (x : y : xs) = P.InfixAppl P.Equal (P.Var x) (P.Var y) : build_group (y : xs)
     build_group _ = []
-    build_groups = DP.conjunction $ map DP.conjunction $ map build_group grps
-    cols_bld = build_sep_comma <$> (mapM (\k -> print_col_t db k $ fromJust $ Map.lookup k cols_map) $ cols)
-    pred_bld = print_query db cols' (DP.conjunction [build_groups, p]) QP.first
-    tbls_bld = build_sep_comma <$> (mapM (\x -> build "{}" <$> Only <$> (escapeId db x)) tbls)
+    build_groups = DP.conjunction $ map (DP.conjunction . build_group) grps
+    cols_bld = build_sep_comma <$> mapM (\k -> printColT db k $ fromJust $ Map.lookup k cols_map) cols
+    pred_bld = printQuery db cols' (DP.conjunction [build_groups, p]) QP.first
+    tbls_bld = build_sep_comma <$> mapM (fmap (build "{}" . Only) . escapeId db) tbls
 
-build_query ::
+buildQuery ::
   LensQueryable s =>
   LensDatabase db =>
   db ->
   Lens s ->
   IO Builder
-build_query db (l :: Lens s) = build_query_ex db tbls cols cols_map p
+buildQuery db (l :: Lens s) = buildQueryEx db tbls cols cols_map p
   where
     p = query_predicate l
     cols = map fst $ recover_env @(Rt s) Proxy
     cols_map = column_map l
     tbls = recover_tables @(Ts s) Proxy
 
-build_insert_ex ::
+buildInsertEx ::
   forall db.
   (LensDatabase db) =>
   db ->
@@ -202,58 +204,57 @@ build_insert_ex ::
   [String] ->
   [[DP.Value]] ->
   IO Builder
-build_insert_ex db tbl cols vals =
+buildInsertEx db tbl cols vals =
   do
     etbl <- escapeId db tbl
     colstr <- build_sep_comma <$> mapM (escapeId db) cols
     valstr <- build_sep_comma <$> mapM build_record vals
     return $ build "INSERT INTO {} ({}) VALUES {}" (etbl, colstr, valstr)
   where
-    build_record rs = build "({})" <$> Only <$> build_sep_comma <$> mapM (print_value db) rs
+    build_record rs = build "({})" . Only . build_sep_comma <$> mapM (printValue db) rs
 
-build_insert ::
+buildInsert ::
   forall db rt.
   (ToDynamic rt, Recoverable (VarsEnv rt) [String], LensDatabase db) =>
   db ->
   String ->
   [Row rt] ->
   IO Builder
-build_insert db tbl rs = build_insert_ex db tbl cols vals
+buildInsert db tbl rs = buildInsertEx db tbl cols vals
   where
     vals = toDPList rs
     cols = recover @(VarsEnv rt) @[String] Proxy
 
-build_delete_ex :: forall db. (LensDatabase db) => db -> String -> [(String, DP.Value)] -> IO Builder
-build_delete_ex db tbl match =
+buildDeleteEx :: forall db. (LensDatabase db) => db -> String -> [(String, DP.Value)] -> IO Builder
+buildDeleteEx db tbl match =
   do
     etbl <- escapeId db tbl
-    wher <- print_query db colsOpt pred QP.first
+    wher <- printQuery db colsOpt pred QP.first
     return $ build "DELETE FROM {} WHERE {}" (etbl, wher)
   where
     colsOpt = Map.fromList $ map (\(k, _) -> (k, (k, ""))) match
     pred = DP.conjunction $ map (\(k, v) -> P.InfixAppl P.Equal (P.Var k) (P.Constant v)) match
 
-build_delete ::
+buildDelete ::
   forall db rt.
   (ToDynamic rt, Recoverable (VarsEnv rt) [String], LensDatabase db) =>
   db ->
   String ->
   Row rt ->
   IO Builder
-build_delete db tbl match = build_delete_ex db tbl matchex
+buildDelete db tbl match = buildDeleteEx db tbl matchex
   where
     cols = recover @(VarsEnv rt) Proxy
     vals = toDynamic match
     matchex = zip cols vals
 
-build_delete_all :: forall db. (LensDatabase db) => db -> String -> IO Builder
-build_delete_all db tbl =
+buildDeleteAll :: forall db. (LensDatabase db) => db -> String -> IO Builder
+buildDeleteAll db tbl =
   do
     etbl <- escapeId db tbl
     return $ build "DELETE FROM {} WHERE TRUE" (Only etbl)
-  where
 
-build_update_ex ::
+buildUpdateEx ::
   forall db.
   LensDatabase db =>
   db ->
@@ -261,22 +262,22 @@ build_update_ex ::
   [(String, DP.Value)] ->
   [(String, DP.Value)] ->
   IO Builder
-build_update_ex db tbl match update =
+buildUpdateEx db tbl match update =
   do
     etbl <- escapeId db tbl
     eset <- build_sep_comma <$> mapM fset update
-    ewher <- print_query db colsOpt pred QP.first
+    ewher <- printQuery db colsOpt pred QP.first
     return $ build "UPDATE {} SET {} WHERE {}" (etbl, eset, ewher)
   where
     colsOpt = Map.fromList $ map (\(k, _) -> (k, (k, ""))) match
     pred = DP.conjunction $ map (\(k, v) -> P.InfixAppl P.Equal (P.Var k) (P.Constant v)) match
     fset (k, v) =
       do
-        ek <- print_col db "" k
-        ev <- print_value db v
+        ek <- printCol db "" k
+        ev <- printValue db v
         return $ build "{} = {}" (ek, ev)
 
-build_update ::
+buildUpdate ::
   forall db rtm rtu.
   ( Recoverable (VarsEnv rtm) [String],
     ToDynamic rtm,
@@ -289,8 +290,8 @@ build_update ::
   Row rtm ->
   Row rtu ->
   IO Builder
-build_update db tbl match update =
-  build_update_ex db tbl matchex updex
+buildUpdate db tbl match update =
+  buildUpdateEx db tbl matchex updex
   where
     colsm = recover @(VarsEnv rtm) Proxy
     colsu = recover @(VarsEnv rtu) Proxy
@@ -299,11 +300,11 @@ build_update db tbl match update =
     matchex = zip colsm dmatch
     updex = zip colsu dupd
 
-combine_queries :: Foldable t => t Builder -> Builder
-combine_queries qs = foldl1 (\a b -> build "{}; {}" (a, b)) qs
+combineQueries :: Foldable t => t Builder -> Builder
+combineQueries = foldl1 (curry (build "{}; {}"))
 
-run_multiple :: Foldable t => (Builder -> IO ()) -> t Builder -> IO ()
-run_multiple action qs =
+runMultiple :: Foldable t => (Builder -> IO ()) -> t Builder -> IO ()
+runMultiple action qs =
   if null qs
     then return ()
-    else action $ combine_queries qs
+    else action $ combineQueries qs

@@ -18,7 +18,7 @@ import FunDep
 import Label (AdjustOrder, IsSubset, Subtract)
 import Lens (DeleteStrategy, Droppable, Fds, Joinable, Lens (..), Rt, TableKey, Ts, deleteLeft, deleteRight, setDebugTime)
 import Lens.Database.Base (Columns, LensDatabase (..), LensQuery, execute, query, queryEx)
-import Lens.Database.Query (build_delete, build_insert, build_update, column_map, query_predicate, run_multiple)
+import Lens.Database.Query (buildDelete, buildInsert, buildUpdate, column_map, query_predicate, runMultiple)
 import Lens.Debug.Timing (timed)
 import Lens.FunDep.Affected (Affected, ToDynamic, affected, toDPList)
 import qualified Lens.Predicate.Base as P
@@ -179,19 +179,19 @@ putDelta ::
   IO ()
 putDelta c (Prim :: Lens s) delta_m what_if =
   do
-    qdelete <- mapM (build_delete c tbl) $ Map.keys mapDel
+    qdelete <- mapM (buildDelete c tbl) $ Map.keys mapDel
     qupdate <-
       mapM
         ( \(k, e) ->
-            build_update c tbl k (R.project @(Subtract (VarsEnv (Rt s)) (TableKey (Rt s) (Fds s))) e)
+            buildUpdate c tbl k (R.project @(Subtract (VarsEnv (Rt s)) (TableKey (Rt s) (Fds s))) e)
         )
         $ Map.assocs mapUpd
-    v <- run_multiple action qupdate
-    v <- run_multiple action qdelete
+    v <- runMultiple action qupdate
+    v <- runMultiple action qdelete
     if List.null insElems
       then return ()
       else do
-        qinsert <- build_insert c tbl insElems
+        qinsert <- buildInsert c tbl insElems
         action qinsert
   where
     insElems = Map.elems mapIns
