@@ -23,7 +23,7 @@ import Lens.Database.Query
 import Lens.Predicate.Hybrid
 import Lens.Predicate.Base ((:=),Phrase(..))
 import Lens.Database.Base (LensGet, get)
-import Lens.Database.Table (create_index, setup)
+import Lens.Database.Table (createIndex, setup)
 import Lens.Database.Postgres (PostgresDatabase)
 import Lens.Put.Classic (put_classic)
 import Lens.Put.Incremental (put, putWif)
@@ -67,7 +67,7 @@ with_db f =
 init_db c =
   do setup c t1
      setup c t2
-     create_index c "fk_b" "t1" "b"
+     createIndex c "fk_b" "t1" "b"
 
 get_t1 = with_db $ (\c -> get c t1)
 get_t2 = with_db $ (\c -> get c t2)
