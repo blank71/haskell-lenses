@@ -123,13 +123,13 @@ printQuery_gr p pr npr
   | compare npr pr == GT = printQuery p npr
   | otherwise = build "({})" <$> Only <$> printQuery p npr
 
-build_sep :: (Buildable sep, Buildable a) => sep -> [a] -> Builder
-build_sep _ [] = build "" ()
-build_sep _ [x] = build "{}" (Only x)
-build_sep sep (x : xs) = build "{}{}{}" (x, sep, build_sep sep xs)
+buildSep :: (Buildable sep, Buildable a) => sep -> [a] -> Builder
+buildSep _ [] = build "" ()
+buildSep _ [x] = build "{}" (Only x)
+buildSep sep (x : xs) = build "{}{}{}" (x, sep, buildSep sep xs)
 
-build_sep_str :: Buildable a => String -> [a] -> Builder
-build_sep_str sep xs = build_sep sep xs
+buildSepStr :: Buildable a => String -> [a] -> Builder
+buildSepStr sep xs = buildSep sep xs
 
 printQuery :: Phrase -> QP.Op -> IO Builder
 printQuery (P.Constant val) _ = printValue val
@@ -150,18 +150,18 @@ printQuery (P.In _ []) _ =
 printQuery (P.In cs vals) _ =
   do
     vals <- mapM (build_vals) vals
-    return $ build "({}) IN ({})" (build_sep_str ", " cs, build_sep_str ", " $ vals)
+    return $ build "({}) IN ({})" (buildSepStr ", " cs, buildSepStr ", " $ vals)
   where
     build_vals vs =
       do
         vals <- mapM printValue vs
-        return $ build "({})" $ Only $ build_sep_str ", " $ vals
+        return $ build "({})" $ Only $ buildSepStr ", " $ vals
 printQuery (P.Case inp cases other) _ =
   do
     inp <- build_inp inp
     cases <- mapM build_case cases
     other <- printQuery other QP.first
-    return $ build "CASE {}{} ELSE {} END" (inp, build_sep_str " " $ cases, other)
+    return $ build "CASE {}{} ELSE {} END" (inp, buildSepStr " " $ cases, other)
   where
     build_inp Nothing = return $ build "" ()
     build_inp (Just x) = build "({}) " <$> Only <$> printQuery x QP.first

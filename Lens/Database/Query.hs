@@ -12,7 +12,7 @@ import Data.Type.Set
 import Lens (Lens (..), Rt, Ts)
 import Lens.Database.Base (Columns, LensDatabase (..), LensQueryable)
 import Lens.FunDep.Affected (ToDynamic, toDPList, toDynamic)
-import Lens.Helpers.Format (build_sep_comma, build_sep_space)
+import Lens.Helpers.Format (buildSepComma, buildSepSpace)
 import qualified Lens.Predicate.Base as P
 import qualified Lens.Predicate.Dynamic as DP
 import Lens.Predicate.Hybrid (HPhrase (..))
@@ -113,18 +113,18 @@ printQuery db cols (P.In cs vals) pr =
   do
     vals <- mapM build_vals vals
     pcs <- mapM (\v -> printQuery db cols (P.Var v) pr) cs
-    return $ build "({}) IN ({})" (build_sep_comma pcs, build_sep_comma vals)
+    return $ build "({}) IN ({})" (buildSepComma pcs, buildSepComma vals)
   where
     build_vals vs =
       do
         vals <- mapM (printValue db) vs
-        return $ build "({})" $ Only $ build_sep_comma vals
+        return $ build "({})" $ Only $ buildSepComma vals
 printQuery db cols (P.Case inp cases other) _ =
   do
     inp <- build_inp inp
     cases <- mapM build_case cases
     other <- printQuery db cols other QP.first
-    return $ build "CASE {}{} ELSE {} END" (inp, build_sep_space cases, other)
+    return $ build "CASE {}{} ELSE {} END" (inp, buildSepSpace cases, other)
   where
     build_inp Nothing = return $ build "" ()
     build_inp (Just x) = build "({}) " . Only <$> printQuery db cols x QP.first
@@ -179,9 +179,9 @@ buildQueryEx db tbls cols cols_map p =
     build_group (x : y : xs) = P.InfixAppl P.Equal (P.Var x) (P.Var y) : build_group (y : xs)
     build_group _ = []
     build_groups = DP.conjunction $ map (DP.conjunction . build_group) grps
-    cols_bld = build_sep_comma <$> mapM (\k -> printColT db k $ fromJust $ Map.lookup k cols_map) cols
+    cols_bld = buildSepComma <$> mapM (\k -> printColT db k $ fromJust $ Map.lookup k cols_map) cols
     pred_bld = printQuery db cols' (DP.conjunction [build_groups, p]) QP.first
-    tbls_bld = build_sep_comma <$> mapM (fmap (build "{}" . Only) . escapeId db) tbls
+    tbls_bld = buildSepComma <$> mapM (fmap (build "{}" . Only) . escapeId db) tbls
 
 buildQuery ::
   LensQueryable s =>
@@ -207,11 +207,11 @@ buildInsertEx ::
 buildInsertEx db tbl cols vals =
   do
     etbl <- escapeId db tbl
-    colstr <- build_sep_comma <$> mapM (escapeId db) cols
-    valstr <- build_sep_comma <$> mapM build_record vals
+    colstr <- buildSepComma <$> mapM (escapeId db) cols
+    valstr <- buildSepComma <$> mapM build_record vals
     return $ build "INSERT INTO {} ({}) VALUES {}" (etbl, colstr, valstr)
   where
-    build_record rs = build "({})" . Only . build_sep_comma <$> mapM (printValue db) rs
+    build_record rs = build "({})" . Only . buildSepComma <$> mapM (printValue db) rs
 
 buildInsert ::
   forall db rt.
@@ -265,7 +265,7 @@ buildUpdateEx ::
 buildUpdateEx db tbl match update =
   do
     etbl <- escapeId db tbl
-    eset <- build_sep_comma <$> mapM fset update
+    eset <- buildSepComma <$> mapM fset update
     ewher <- printQuery db colsOpt pred QP.first
     return $ build "UPDATE {} SET {} WHERE {}" (etbl, eset, ewher)
   where

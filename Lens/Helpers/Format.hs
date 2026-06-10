@@ -4,16 +4,16 @@ import Data.Text.Buildable (Buildable)
 import Data.Text.Format (Only (..), build)
 import Data.Text.Lazy.Builder (Builder)
 
-build_sep :: (Buildable sep, Buildable a) => sep -> [a] -> Builder
-build_sep _ [] = build "" ()
-build_sep _ [x] = build "{}" (Only x)
-build_sep sep (x : xs) = build "{}{}{}" (x, sep, build_sep sep xs)
+buildSep :: (Buildable sep, Buildable a) => sep -> [a] -> Builder
+buildSep _ [] = build "" ()
+buildSep _ [x] = build "{}" (Only x)
+buildSep sep (x : xs) = build "{}{}{}" (x, sep, buildSep sep xs)
 
-build_sep_str :: Buildable a => String -> [a] -> Builder
-build_sep_str sep xs = build_sep sep xs
+buildSepStr :: Buildable a => String -> [a] -> Builder
+buildSepStr = buildSep
 
-build_sep_comma :: Buildable a => [a] -> Builder
-build_sep_comma = build_sep_str ", "
+buildSepComma :: Buildable a => [a] -> Builder
+buildSepComma = buildSepStr ", "
 
-build_sep_space :: Buildable a => [a] -> Builder
-build_sep_space = build_sep_str ", "
+buildSepSpace :: Buildable a => [a] -> Builder
+buildSepSpace = buildSepStr ", "

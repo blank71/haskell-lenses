@@ -13,7 +13,7 @@ import Data.Text.Lazy.Builder (Builder)
 import Data.Type.Set (Proxy (..))
 import Lens (Fds, Lens (..), Rt, Ts)
 import Lens.Database.Base (LensDatabase (..), LensQuery (..))
-import Lens.Helpers.Format (build_sep_comma)
+import Lens.Helpers.Format (buildSepComma)
 import Lens.Record.Base (RecoverEnv (..))
 import Lens.Types (Type (..))
 import Tables (recover_tables)
@@ -52,12 +52,12 @@ buildCreateTblIfne db tbl =
     return $
       F.build
         "CREATE TABLE IF NOT EXISTS {} ({}{})"
-        (name, build_sep_comma cols, keyOpt)
+        (name, buildSepComma cols, keyOpt)
   where
     pk (Just cols) =
       do
         cols <- mapM (escapeId db) cols
-        return $ F.build ", PRIMARY KEY ({})" (Only $ build_sep_comma cols)
+        return $ F.build ", PRIMARY KEY ({})" (Only $ buildSepComma cols)
     pk Nothing = return $ F.build "" ()
 
 addForeignKey db fname tbl col ftbl fkey =
