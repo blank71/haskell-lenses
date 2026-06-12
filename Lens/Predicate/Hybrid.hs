@@ -15,17 +15,17 @@ type DPhrase = DP.Phrase
 data HPhrase (p :: SPhrase) where
   HPred :: DPhrase -> HPhrase p
 
-of_static :: forall (p :: SPhrase). Recoverable p DPhrase => HPhrase p
-of_static = HPred @p $ recover @p Proxy
+ofStatic :: forall (p :: SPhrase). Recoverable p DPhrase => HPhrase p
+ofStatic = HPred @p $ recover @p Proxy
 
 erased :: forall rt ret (p :: SPhrase). (P.Typ rt p ~ 'Just ret) => HPhrase p -> HPhrase ('P.Erased rt ret)
 erased (HPred p) = HPred p
 
 instance forall v p. (KnownSymbol v, p ~ 'P.Var v) => IsLabel v (HPhrase p) where
-  fromLabel = of_static @('P.Var v)
+  fromLabel = ofStatic @('P.Var v)
 
 var :: forall v. KnownSymbol v => HPhrase ('P.Var v)
-var = of_static @('P.Var v)
+var = ofStatic @('P.Var v)
 
 (#>) :: forall p1 p2. HPhrase p1 -> HPhrase p2 -> HPhrase (p1 :> p2)
 (HPred p1) #> (HPred p2) = HPred $ P.InfixAppl P.GreaterThan p1 p2
@@ -52,13 +52,13 @@ neg :: forall p. HPhrase p -> HPhrase ('P.UnaryAppl 'P.UnaryMinus p)
 neg (HPred p) = HPred $ P.UnaryAppl P.UnaryMinus p
 
 i :: forall v. KnownNat v => HPhrase ('P.Constant ('P.Int v))
-i = of_static @('P.Constant ('P.Int v))
+i = ofStatic @('P.Constant ('P.Int v))
 
 s :: forall v. KnownSymbol v => HPhrase ('P.Constant ('P.String v))
-s = of_static @('P.Constant ('P.String v))
+s = ofStatic @('P.Constant ('P.String v))
 
 b :: forall v. Recoverable v Bool => HPhrase ('P.Constant ('P.Bool v))
-b = of_static @('P.Constant ('P.Bool v))
+b = ofStatic @('P.Constant ('P.Bool v))
 
 di :: Int -> HPhrase ('P.Erased '[] Int)
 di v = HPred (P.Constant $ DP.Int v)
