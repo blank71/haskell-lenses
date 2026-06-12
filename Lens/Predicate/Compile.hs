@@ -30,63 +30,66 @@ instance (KnownSymbol k, LookupMap rt, BoxValue t) => LookupMap ('(k, t) ': rt) 
       upd :: (Row rt -> Value) -> (Row ('(k, t) ': rt) -> Value)
       upd f (R.Cons _ r) = f r
 
-log_and :: Value -> Value -> Value
-log_and (DP.Bool True) (DP.Bool True) = DP.Bool True
-log_and (DP.Bool _) (DP.Bool _) = DP.Bool False
+logAnd :: Value -> Value -> Value
+logAnd (DP.Bool True) (DP.Bool True) = DP.Bool True
+logAnd (DP.Bool _) (DP.Bool _) = DP.Bool False
+logAnd _ _ = error "Invalid arguments to logAnd"
 
-log_or :: Value -> Value -> Value
-log_or (DP.Bool False) (DP.Bool False) = DP.Bool False
-log_or (DP.Bool _) (DP.Bool _) = DP.Bool True
+logOr :: Value -> Value -> Value
+logOr (DP.Bool False) (DP.Bool False) = DP.Bool False
+logOr (DP.Bool _) (DP.Bool _) = DP.Bool True
+logOr _ _ = error "Invalid arguments to logOr"
 
 cmp :: Ordering -> Value -> Value -> Value
 cmp o (DP.Bool b1) (DP.Bool b2) = DP.Bool (compare b1 b2 == o)
 cmp o (DP.String s1) (DP.String s2) = DP.Bool (compare s1 s2 == o)
 cmp o (DP.Int i1) (DP.Int i2) = DP.Bool (compare i1 i2 == o)
+cmp _ _ _ = error "Invalid arguments to cmp"
 
 plus :: Value -> Value -> Value
 plus (DP.Int i1) (DP.Int i2) = DP.Int $ i1 + i2
+plus _ _ = error "Invalid arguments to plus"
 
-infix_appl :: P.Operator -> Value -> Value -> Value
-infix_appl P.LessThan = cmp LT
-infix_appl P.GreaterThan = cmp GT
-infix_appl P.Equal = cmp EQ
-infix_appl P.LogicalAnd = log_and
-infix_appl P.LogicalOr = log_or
-infix_appl P.Plus = plus
+infixAppl :: P.Operator -> Value -> Value -> Value
+infixAppl P.LessThan = cmp LT
+infixAppl P.GreaterThan = cmp GT
+infixAppl P.Equal = cmp EQ
+infixAppl P.LogicalAnd = logAnd
+infixAppl P.LogicalOr = logOr
+infixAppl P.Plus = plus
 
-unary_appl :: P.UnaryOperator -> Value -> Value
-unary_appl (P.UnaryMinus) (DP.Int i) = DP.Int $ -i
-unary_appl (P.Negate) (DP.Bool b) = DP.Bool $ not b
+unaryAppl :: P.UnaryOperator -> Value -> Value
+unaryAppl P.UnaryMinus (DP.Int i) = DP.Int $ -i
+unaryAppl P.Negate (DP.Bool b) = DP.Bool $ not b
+unaryAppl _ _ = error "Invalid arguments to unaryAppl"
 
 -- | Compile the dynamic predicate into a function taking a row and returning the computed value.
 compile :: forall rt. LookupMap rt => DPhrase -> (Row rt -> Value)
-compile (P.Constant v) = \_ -> v
+compile (P.Constant v) = const v
 compile (P.Var v) = lookupMap @rt ! v
 compile (P.InfixAppl op p1 p2) = \r -> fop (f1 r) (f2 r)
   where
-    fop = infix_appl op
+    fop = infixAppl op
     f1 = compile p1
     f2 = compile p2
-compile (P.UnaryAppl op p) = \r -> fop (f r)
+compile (P.UnaryAppl op p) = fop . f
   where
-    fop = unary_appl op
+    fop = unaryAppl op
     f = compile p
-compile (P.In ids vs) = (\r -> DP.Bool $ Set.member (fval r) valset)
+compile (P.In ids vs) = \r -> DP.Bool $ Set.member (fval r) valset
   where
     lookups = map (\i -> lookupMap @rt ! i) ids
-    fval = (\r -> map (\v -> v r) lookups)
+    fval r = map (\v -> v r) lookups
     valset = Set.fromList vs
 compile (P.Case p cases other) =
-  ( \r ->
-      let match = f r
-       in case List.find (\(p1, _) -> p1 r == match) fcases of
-            Just (_, p2) -> p2 r
-            Nothing -> fother r
-  )
+  \r ->
+    let match = f r
+     in case List.find (\(p1, _) -> p1 r == match) fcases of
+          Just (_, p2) -> p2 r
+          Nothing -> fother r
   where
-    fdef = (\_ -> DP.Bool True)
-    f = case p of
-      Just jp -> compile jp
-      Nothing -> fdef
+    fdef _ = DP.Bool True
+    f = maybe fdef compile p
     fcases = map (\(p1, p2) -> (compile @rt p1, compile @rt p2)) cases
     fother = compile other
+compile _ = error "Unsupported predicate form"

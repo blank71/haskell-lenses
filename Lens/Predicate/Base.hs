@@ -230,7 +230,7 @@ instance Recoverable ('Bool 'True) Bool where
 instance KnownNat i => Recoverable ('Int i) Int where
   recover Proxy = fromIntegral $ natVal @i Proxy
 
-instance KnownSymbol s => Recoverable ('String s) (String) where
+instance KnownSymbol s => Recoverable ('String s) String where
   recover Proxy = symbolVal @s Proxy
 
 class EvalEnvRow (e :: EvalEnv) where
