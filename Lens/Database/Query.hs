@@ -97,13 +97,13 @@ printQuery db cols (P.Var v) _ = printCol db tbl col
   where
     (col, tbl) = fromJust $ Map.lookup v cols
 printQuery db cols (P.InfixAppl op a b) pr =
-  let npr = QP.of_op op
+  let npr = QP.ofOp op
    in do
         left <- printQuery db cols a npr
         right <- printQuery db cols b npr
         return $ eqPriority pr npr $ build "{} {} {}" (left, printOp op, right)
 printQuery db cols (P.UnaryAppl op a) pr =
-  let npr = QP.of_unary_op op
+  let npr = QP.ofUnaryOp op
    in do
         arg <- printQuery db cols a npr
         return $ grPriority pr npr $ build "{} {}" (printUnaryOp op, arg)

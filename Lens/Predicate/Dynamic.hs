@@ -135,13 +135,13 @@ printQuery :: Phrase -> QP.Op -> IO Builder
 printQuery (P.Constant val) _ = printValue val
 printQuery (P.Var v) _ = return $ build "{}" v
 printQuery (P.InfixAppl op a b) pr =
-  let npr = QP.of_op op
+  let npr = QP.ofOp op
    in do
         left <- printQueryEq a pr npr
         right <- printQueryEq b pr npr
         return $ build "{} {} {}" (left, printOp op, right)
 printQuery (P.UnaryAppl op a) pr =
-  let npr = QP.of_unary_op op
+  let npr = QP.ofUnaryOp op
    in do
         arg <- printQueryGr a pr npr
         return $ build "{} {}" (printUnaryOp op, arg)
