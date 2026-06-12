@@ -25,7 +25,7 @@ import Lens.Predicate.Base ((:=),Phrase(..))
 import Lens.Database.Base (LensGet, get)
 import Lens.Database.Table (createIndex, setup)
 import Lens.Database.Postgres (PostgresDatabase)
-import Lens.Put.Classic (put_classic)
+import Lens.Put.Classic (putClassic)
 import Lens.Put.Incremental (put, putWif)
 import Lens.Debug.Timing (timed, timing, firstAndLast, timingToMs, makeTimedConn)
 import FunDep
@@ -90,12 +90,12 @@ gen_t2 n =
 
 fill_t1 n c =
   do dat <- recs <$> gen_t1 n
-     put_classic c t1 dat
+     putClassic c t1 dat
      return dat
 
 fill_t2 n c =
   do dat <- recs <$> gen_t2 n
-     put_classic c t2 dat
+     putClassic c t2 dat
      return dat
 
 fill_db n c =
@@ -124,7 +124,7 @@ benchmark_1 incremental c =
      d <- get c l
      let dat = Set.map chrec d
      (t1,()) <- timed $
-       if incremental then put c l dat else put_classic c l dat
+       if incremental then put c l dat else putClassic c l dat
      tm <- timing l
      put c l d -- revert
      return $ timingToMs tm
@@ -141,7 +141,7 @@ benchmark_2 incremental c =
      d <- get c l
      let dat = Set.map chrec d
      (t1,()) <- timed $
-       if incremental then put tc l dat else put_classic tc l dat
+       if incremental then put tc l dat else putClassic tc l dat
      tm <- timing l
      qt <- readIORef tio
      put c l d -- revert
@@ -161,7 +161,7 @@ benchmark_3_templ delfn incremental c =
      let dat = Set.map chrec d
      writeIORef tio []
      (t1,()) <- timed $
-       if incremental then put tc l dat else put_classic tc l dat
+       if incremental then put tc l dat else putClassic tc l dat
      tm <- timing l
      qt <- readIORef tio
      Prelude.print qt

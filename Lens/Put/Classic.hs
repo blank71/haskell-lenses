@@ -30,20 +30,20 @@ import qualified Lens.Record.Sorted as SR
 import Tables (RecoverTables, recover_tables)
 import qualified Value
 
-put_classic_drop ::
+putClassicDrop ::
   ( RecoverTables (Ts s),
     R.RecoverEnv (Rt s),
     LensQuery c,
     Droppable env (key :: [Symbol]) s snew
   ) =>
   c ->
-  (Proxy key) ->
-  (Proxy env) ->
-  (Lens s) ->
-  (Lens snew) ->
+  Proxy key ->
+  Proxy env ->
+  Lens s ->
+  Lens snew ->
   RecordsSet (Rt snew) ->
   IO (RecordsSet (Rt s))
-put_classic_drop c (Proxy :: Proxy key) (Proxy :: Proxy env) (l1 :: Lens s1) _ n =
+putClassicDrop c (Proxy :: Proxy key) (Proxy :: Proxy env) (l1 :: Lens s1) _ n =
   do
     old <- get c l1
     let mprime = join n envRows
@@ -51,7 +51,7 @@ put_classic_drop c (Proxy :: Proxy key) (Proxy :: Proxy env) (l1 :: Lens s1) _ n
   where
     envRows = Set.fromList [P.toRow @env]
 
-put_classic_join ::
+putClassicJoin ::
   forall c s1 s2 snew joincols.
   (LensQuery c, Joinable s1 s2 snew joincols) =>
   c ->
@@ -61,7 +61,7 @@ put_classic_join ::
   Lens snew ->
   RecordsSet (Rt snew) ->
   IO (RecordsSet (Rt s1), RecordsSet (Rt s2))
-put_classic_join c delfn (l1 :: Lens s1) (l2 :: Lens s2) _ o =
+putClassicJoin c delfn (l1 :: Lens s1) (l2 :: Lens s2) _ o =
   do
     m <- get c l1
     n <- get c l2
@@ -77,29 +77,29 @@ put_classic_join c delfn (l1 :: Lens s1) (l2 :: Lens s2) _ o =
     oleft = project @(VarsEnv (Rt s1)) o
     oright = project @(VarsEnv (Rt s2)) o
 
-put_classic_select ::
+putClassicSelect ::
   (LensQuery c, Selectable p s snew, RecoverTables (Ts s), R.RecoverEnv (Rt s)) =>
   c ->
-  (HPhrase p) ->
-  (Lens s) ->
-  (Lens snew) ->
+  HPhrase p ->
+  Lens s ->
+  Lens snew ->
   RecordsSet (Rt snew) ->
   IO (RecordsSet (Rt s))
-put_classic_select c (HPred p) (l :: Lens s) _ n =
+putClassicSelect c (HPred p) (l :: Lens s) _ n =
   do
     m <- get c l
     let unsat = SR.filter (DP.not p) m
     let m0 = merge @(TopologicalSort (Fds s)) unsat n
     return m0
 
-put_classic ::
+putClassic ::
   forall c s.
   (RecoverTables (Ts s), R.RecoverEnv (Rt s), LensQuery c, LensDatabase c) =>
   c ->
-  (Lens s) ->
+  Lens s ->
   RecordsSet (Rt s) ->
   IO ()
-put_classic c (Prim :: Lens s) view =
+putClassic c (Prim :: Lens s) view =
   do
     qdelete <- buildDeleteAll c tbl
     action qdelete
@@ -111,37 +111,37 @@ put_classic c (Prim :: Lens s) view =
   where
     tbl = head $ recover_tables @(Ts s) Proxy
     action = if False then Prelude.print else execute c
-put_classic c (Debug l) view =
+putClassic c (Debug l) view =
   do
     Prelude.print $ show view
-    put_classic c l view
-put_classic c dl@(DebugTime _ l) view =
+    putClassic c l view
+putClassic c dl@(DebugTime _ l) view =
   do
     SR.eval_strict view
     setDebugTime dl
-    put_classic c l view
-put_classic c l@(Drop key env l1) n =
+    putClassic c l view
+putClassic c l@(Drop key env l1) n =
   do
-    res <- put_classic_drop c key env l1 l n
-    put_classic c l1 res
-put_classic c l@(Select p l1) n =
+    res <- putClassicDrop c key env l1 l n
+    putClassic c l1 res
+putClassic c l@(Select p l1) n =
   do
-    res <- put_classic_select c p l1 l n
-    put_classic c l1 res
-put_classic c l@(Join delfn l1 l2) o =
+    res <- putClassicSelect c p l1 l n
+    putClassic c l1 res
+putClassic c l@(Join delfn l1 l2) o =
   do
-    (m', n') <- put_classic_join c delfn l1 l2 l o
-    put_classic c l1 m'
-    put_classic c l2 n'
+    (m', n') <- putClassicJoin c delfn l1 l2 l o
+    putClassic c l1 m'
+    putClassic c l2 n'
 
-put_classic_wif ::
+putClassicWif ::
   forall c s.
   (RecoverTables (Ts s), R.RecoverEnv (Rt s), LensQuery c, LensDatabase c) =>
   c ->
-  (Lens s) ->
+  Lens s ->
   RecordsSet (Rt s) ->
   IO ()
-put_classic_wif c (Prim :: Lens s) view =
+putClassicWif c (Prim :: Lens s) view =
   do
     qdelete <- buildDeleteAll c tbl
     action qdelete
@@ -153,25 +153,25 @@ put_classic_wif c (Prim :: Lens s) view =
   where
     tbl = head $ recover_tables @(Ts s) Proxy
     action = if True then Prelude.print else execute c
-put_classic_wif c (Debug l) view =
+putClassicWif c (Debug l) view =
   do
     Prelude.print $ show view
-    put_classic c l view
-put_classic_wif c dl@(DebugTime _ l) view =
+    putClassic c l view
+putClassicWif c dl@(DebugTime _ l) view =
   do
     let () = Set.toList view `deepseq` ()
     setDebugTime dl
-    put_classic c l view
-put_classic_wif c l@(Drop key env l1) n =
+    putClassic c l view
+putClassicWif c l@(Drop key env l1) n =
   do
-    res <- put_classic_drop c key env l1 l n
-    put_classic c l1 res
-put_classic_wif c l@(Select p l1) n =
+    res <- putClassicDrop c key env l1 l n
+    putClassic c l1 res
+putClassicWif c l@(Select p l1) n =
   do
-    res <- put_classic_select c p l1 l n
-    put_classic c l1 res
-put_classic_wif c l@(Join delfn l1 l2) o =
+    res <- putClassicSelect c p l1 l n
+    putClassic c l1 res
+putClassicWif c l@(Join delfn l1 l2) o =
   do
-    (m', n') <- put_classic_join c delfn l1 l2 l o
-    put_classic c l2 n'
-    put_classic c l1 m'
+    (m', n') <- putClassicJoin c delfn l1 l2 l o
+    putClassic c l2 n'
+    putClassic c l1 m'
