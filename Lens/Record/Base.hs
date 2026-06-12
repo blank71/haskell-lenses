@@ -26,7 +26,7 @@ instance (KnownSymbol k, Recoverable v T.Type, RecoverEnv xs) => RecoverEnv ('(k
 
 type family VarsEnv (env :: Env) :: [Symbol] where
   VarsEnv '[] = '[]
-  VarsEnv ('(k, v) ': env) = k ': (VarsEnv env)
+  VarsEnv ('(k, v) ': env) = k ': VarsEnv env
 
 type family RemoveEnv (vars :: [Symbol]) (env :: Env) where
   RemoveEnv vs '[] = '[]
@@ -103,7 +103,7 @@ instance (KnownSymbol k, Show t, Fields xs) => Fields ('(k, t) ': xs) where
 instance Fields e => Show (Row e) where
   show r = "{ " ++ flds ++ " }"
     where
-      flds = concat $ intersperse ", " $ fields r
+      flds = intercalate ", " (fields r)
 
 -- Row Fetching
 
@@ -127,12 +127,12 @@ type Fetchable s env t evid =
 -- type Test s env t = forall evid. Fetchable s env t evid
 
 fetch :: forall s env t evid. Fetchable s env t evid => Row env -> t
-fetch row = intfetch @t @evid row
+fetch = intfetch @t @evid
 
 type family UpdateType (s :: Symbol) (t :: *) (env :: Env) :: Env where
   UpdateType _ _ '[] = '[]
   UpdateType s t ('(s, _) ': env) = '(s, t) ': env
-  UpdateType s t ('(k, v) ': env) = '(k, v) ': (UpdateType s t env)
+  UpdateType s t ('(k, v) ': env) = '(k, v) ': UpdateType s t env
 
 type Same s t k v env = UpdateType s t ('(k, v) : env) ~ ('(k, v) : UpdateType s t env)
 
@@ -141,7 +141,7 @@ type Same s t k v env = UpdateType s t ('(k, v) : env) ~ ('(k, v) : UpdateType s
 type family SetType (s :: Symbol) (t :: *) (env :: Env) (i :: Maybe InEnvEvid) :: Env where
   SetType s t env 'Nothing = '(s, t) ': env
   SetType s t ('(k, v) ': env) ('Just 'Take) = '(s, t) ': env
-  SetType s t ('(k, v) ': env) ('Just ('Skip ev)) = '(k, v) ': (SetType s t env ('Just ev))
+  SetType s t ('(k, v) ': env) ('Just ('Skip ev)) = '(k, v) ': SetType s t env ('Just ev)
 
 class UpdateRow s (t :: *) (r :: Env) (i :: Maybe InEnvEvid) where
   intupdate :: Ord t => t -> Row r -> Row (SetType s t r i)
@@ -153,7 +153,7 @@ instance (UpdateRow s t env ('Just ev)) => UpdateRow s t ('(k, v) ': env) ('Just
   intupdate v (Cons w row) = Cons w (intupdate @s @t @env @('Just ev) v row)
 
 instance UpdateRow s t env 'Nothing where
-  intupdate v row = Cons v row
+  intupdate = Cons
 
 type Updatable s t env tnew evid =
   ( evid ~ FindMaybe env s,
@@ -163,7 +163,7 @@ type Updatable s t env tnew evid =
   )
 
 update :: forall s t env tnew evid. (Updatable s t env tnew evid) => t -> Row env -> Row tnew
-update v row = intupdate @s @t @env @(FindMaybe env s) v row
+update = intupdate @s @t @env @(FindMaybe env s)
 
 -- Revision
 
@@ -174,7 +174,7 @@ type family RevisableEvid (rt :: Env) (rt' :: Env) where
   RevisableEvid rt '[] = 'Nothing
   RevisableEvid rt ('(k, v) ': rst) = FindMaybe rt k
 
-instance IntRevisable rt '[] ('Nothing) where
+instance IntRevisable rt '[] 'Nothing where
   intrevise r _ = r
 
 instance
@@ -189,7 +189,7 @@ instance IntRevisable rs1 rs2 ('Just evid) => IntRevisable ('(k, t) ': rs1) rs2 
 type Revisable rs1 rs2 = IntRevisable rs1 rs2 (RevisableEvid rs1 rs2)
 
 revise :: forall rs1 rs2. Revisable rs1 rs2 => Row rs1 -> Row rs2 -> Row rs1
-revise r s = intrevise @rs1 @rs2 @(RevisableEvid rs1 rs2) r s
+revise = intrevise @rs1 @rs2 @(RevisableEvid rs1 rs2)
 
 -- Projection
 
@@ -203,7 +203,7 @@ class Project (s :: [Symbol]) (e :: Env) where
 instance Project '[] env where
   project _ = Empty
 
-instance (Project xs env, Fetchable x env t evid) => Project (x ': xs) (env) where
+instance (Project xs env, Fetchable x env t evid) => Project (x ': xs) env where
   project r = Cons (fetch @x r) (project @xs @env r)
 
 type Normalisable (e :: Env) = Project (SymAsSet (VarsEnv e)) e
@@ -276,12 +276,12 @@ instance Eq (Row e) where
   r1 == r2 = eq r1 r2
 
 instance Ord (Row e) where
-  compare r1 r2 = comp r1 r2
+  compare = comp
 
 -- Helper Syntax
 
 type family TupleType (e :: Env) :: * where
-  TupleType '[ '(k, t)] = Only (t)
+  TupleType '[ '(k, t)] = Only t
   TupleType '[ '(k1, t1), '(k2, t2)] = (t1, t2)
   TupleType '[ '(k1, t1), '(k2, t2), '(k3, t3)] = (t1, t2, t3)
   TupleType '[ '(k1, t1), '(k2, t2), '(k3, t3), '(k4, t4)] = (t1, t2, t3, t4)
@@ -296,7 +296,7 @@ instance (Req t) => ToRow '[ '(k, t)] (Only t) where
   toRow (Only v) = Cons v Empty
 
 instance (Req t1, Req t2) => ToRow '[ '(k1, t1), '(k2, t2)] (t1, t2) where
-  toRow (v1, v2) = Cons (v1) $ Cons (v2) Empty
+  toRow (v1, v2) = Cons v1 $ Cons v2 Empty
 
 instance (Req t1, Req t2, Req t3) => ToRow '[ '(k1, t1), '(k2, t2), '(k3, t3)] (t1, t2, t3) where
   toRow (v1, v2, v3) = Cons v1 $ Cons v2 $ Cons v3 Empty
