@@ -25,13 +25,13 @@ class BoxValue t where
   box :: t -> Value
 
 instance BoxValue Int where
-  box i = Int i
+  box = Int
 
 instance BoxValue String where
-  box s = String s
+  box = String
 
 instance BoxValue Bool where
-  box b = Bool b
+  box = Bool
 
 -- data Predicate (r :: Env) where
 --  Constant :: Value -> Predicate '[]
@@ -72,10 +72,10 @@ instance
   recover Proxy = P.Case (recover @cond @(Maybe Phrase) Proxy) (recover @cases @[(Phrase, Phrase)] Proxy) (recover @pother @Phrase Proxy)
 
 simplify :: Phrase -> Phrase
-simplify (P.InfixAppl (P.LogicalAnd) (P.Constant (Bool True)) p2) = p2
-simplify (P.InfixAppl (P.LogicalAnd) (P.Constant (Bool False)) _) = P.Constant (Bool False)
-simplify (P.InfixAppl (P.LogicalAnd) p1 (P.Constant (Bool True))) = p1
-simplify (P.InfixAppl (P.LogicalAnd) _ (P.Constant (Bool False))) = P.Constant (Bool False)
+simplify (P.InfixAppl P.LogicalAnd (P.Constant (Bool True)) p2) = p2
+simplify (P.InfixAppl P.LogicalAnd (P.Constant (Bool False)) _) = P.Constant (Bool False)
+simplify (P.InfixAppl P.LogicalAnd p1 (P.Constant (Bool True))) = p1
+simplify (P.InfixAppl P.LogicalAnd _ (P.Constant (Bool False))) = P.Constant (Bool False)
 simplify p = p
 
 conjunction :: [P.Phrase id Value] -> P.Phrase id Value
@@ -93,7 +93,7 @@ disjunction [x] = x
 disjunction [] = P.Constant (Bool True)
 
 not :: P.Phrase id Value -> P.Phrase id Value
-not p = P.UnaryAppl P.Negate p
+not = P.UnaryAppl P.Negate
 
 printValue :: Value -> IO Builder
 printValue (Bool False) = return $ build "false" ()
@@ -113,15 +113,15 @@ printUnaryOp :: P.UnaryOperator -> String
 printUnaryOp P.Negate = "NOT"
 printUnaryOp P.UnaryMinus = "-"
 
-printQuery_eq :: Phrase -> QP.Op -> QP.Op -> IO Builder
-printQuery_eq p pr npr
-  | compare npr pr == LT = build "({})" <$> Only <$> printQuery p npr
+printQueryEq :: Phrase -> QP.Op -> QP.Op -> IO Builder
+printQueryEq p pr npr
+  | npr < pr = build "({})" . Only <$> printQuery p npr
   | otherwise = printQuery p npr
 
-printQuery_gr :: Phrase -> QP.Op -> QP.Op -> IO Builder
-printQuery_gr p pr npr
-  | compare npr pr == GT = printQuery p npr
-  | otherwise = build "({})" <$> Only <$> printQuery p npr
+printQueryGr :: Phrase -> QP.Op -> QP.Op -> IO Builder
+printQueryGr p pr npr
+  | npr > pr = printQuery p npr
+  | otherwise = build "({})" . Only <$> printQuery p npr
 
 buildSep :: (Buildable sep, Buildable a) => sep -> [a] -> Builder
 buildSep _ [] = build "" ()
@@ -129,47 +129,48 @@ buildSep _ [x] = build "{}" (Only x)
 buildSep sep (x : xs) = build "{}{}{}" (x, sep, buildSep sep xs)
 
 buildSepStr :: Buildable a => String -> [a] -> Builder
-buildSepStr sep xs = buildSep sep xs
+buildSepStr = buildSep
 
 printQuery :: Phrase -> QP.Op -> IO Builder
 printQuery (P.Constant val) _ = printValue val
-printQuery (P.Var v) _ = return $ build "{}" v where
+printQuery (P.Var v) _ = return $ build "{}" v
 printQuery (P.InfixAppl op a b) pr =
   let npr = QP.of_op op
    in do
-        left <- printQuery_eq a pr npr
-        right <- printQuery_eq b pr npr
+        left <- printQueryEq a pr npr
+        right <- printQueryEq b pr npr
         return $ build "{} {} {}" (left, printOp op, right)
 printQuery (P.UnaryAppl op a) pr =
   let npr = QP.of_unary_op op
    in do
-        arg <- printQuery_gr a pr npr
+        arg <- printQueryGr a pr npr
         return $ build "{} {}" (printUnaryOp op, arg)
 printQuery (P.In _ []) _ =
   return $ build "FALSE" ()
 printQuery (P.In cs vals) _ =
   do
-    vals <- mapM (build_vals) vals
-    return $ build "({}) IN ({})" (buildSepStr ", " cs, buildSepStr ", " $ vals)
+    vals <- mapM build_vals vals
+    return $ build "({}) IN ({})" (buildSepStr ", " cs, buildSepStr ", " vals)
   where
     build_vals vs =
       do
         vals <- mapM printValue vs
-        return $ build "({})" $ Only $ buildSepStr ", " $ vals
+        return $ build "({})" $ Only $ buildSepStr ", " vals
 printQuery (P.Case inp cases other) _ =
   do
     inp <- build_inp inp
     cases <- mapM build_case cases
     other <- printQuery other QP.first
-    return $ build "CASE {}{} ELSE {} END" (inp, buildSepStr " " $ cases, other)
+    return $ build "CASE {}{} ELSE {} END" (inp, buildSepStr " " cases, other)
   where
     build_inp Nothing = return $ build "" ()
-    build_inp (Just x) = build "({}) " <$> Only <$> printQuery x QP.first
+    build_inp (Just x) = build "({}) " . Only <$> printQuery x QP.first
     build_case (key, val) =
       do
         cond <- printQuery key QP.first
         act <- printQuery val QP.first
         return $ build "WHEN {} THEN {}" (cond, act)
+printQuery _ _ = error "Unsupported query"
 
 print :: Phrase -> IO Builder
 print p = printQuery p QP.first
