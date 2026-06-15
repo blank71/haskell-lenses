@@ -178,14 +178,3 @@ fromList [{ track = "Lovesong", rating = 5, album = "Paris", quantity = 4 },{ tr
 "INSERT INTO \"tracks\" (\"track\", \"date\", \"rating\", \"album\") VALUES ('Lovesong', 1989, 5, 'Disintegration')"
 "UPDATE \"albums\" SET \"quantity\" = 7 WHERE \"album\" = 'Disintegration'"
 ```
-
-test_put albums unchangedAlbums
-test_put albums unchangedAlbums
-test_get albums
-test_get tracks
-test_get tracks1
-test_get tracks2
-test_get tracks3
-test_put tracks3 examplePut
-
-test_get tracks3

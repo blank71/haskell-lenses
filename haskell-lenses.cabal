@@ -74,3 +74,33 @@ library
     , utf8-string        >=1.0     && <1.1
 
   default-language:   Haskell2010
+
+-- test-suite test-foo
+--   type:             exitcode-stdio-1.0
+--   main-is:          test/ScratchSpec.hs
+--   build-depends:
+--       base               >=4.14    && <4.15
+--     , hspec
+--     , QuickCheck
+--     -- , haskell-lenses
+--     , type-level-sets    ==0.8.9.0
+--   default-extensions:
+--     AllowAmbiguousTypes
+--     ConstraintKinds
+--     DataKinds
+--     FlexibleContexts
+--     FlexibleInstances
+--     GADTs
+--     KindSignatures
+--     MultiParamTypeClasses
+--     OverloadedLabels
+--     OverloadedStrings
+--     PolyKinds
+--     ScopedTypeVariables
+--     StandaloneDeriving
+--     TypeApplications
+--     TypeFamilies
+--     TypeInType
+--     TypeOperators
+--     UndecidableInstances
+--   default-language: Haskell2010
