@@ -22,7 +22,7 @@ instance RecoverEnv '[] where
   recover_env Proxy = []
 
 instance (KnownSymbol k, Recoverable v T.Type, RecoverEnv xs) => RecoverEnv ('(k, v) ': xs) where
-  recover_env Proxy = (symbolVal (Proxy :: Proxy k), T.recover_type (Proxy :: Proxy v)) : recover_env (Proxy :: Proxy xs)
+  recover_env Proxy = (symbolVal (Proxy :: Proxy k), T.recoverType (Proxy :: Proxy v)) : recover_env (Proxy :: Proxy xs)
 
 type family VarsEnv (env :: Env) :: [Symbol] where
   VarsEnv '[] = '[]
