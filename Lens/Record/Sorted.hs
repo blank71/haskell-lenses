@@ -23,7 +23,7 @@ type RecordsDelta rt = Delta (Row rt)
 -- instance NFData a => NFData (Set a) where rnf = rnf1
 
 instance NFData1 Set where
-  liftRnf r v = rnf $ fmap r $ toList v
+  liftRnf r v = rnf (r <$> toList v)
 
 type RemainingColumns rt rt' = L.Subtract (R.VarsEnv rt') (R.InterCols rt rt')
 
@@ -38,14 +38,14 @@ type Joinable rt rt' rt'' =
     Project (R.VarsEnv rt'') (ProjectEnv (VarsEnv (RemoveInterEnv rt rt')) rt :++ rt')
   )
 
-eval_strict_delta :: NFData (Row rt) => RecordsDelta rt -> IO ()
-eval_strict_delta (d1, d2) = Set.toList d1 `deepseq` (Set.toList d2) `deepseq` return ()
+evalStrictDelta :: NFData (Row rt) => RecordsDelta rt -> IO ()
+evalStrictDelta (d1, d2) = Set.toList d1 `deepseq` Set.toList d2 `deepseq` return ()
 
-eval_strict :: NFData (Row rt) => RecordsSet rt -> IO ()
-eval_strict rs = Set.toList rs `deepseq` return ()
+evalStrict :: NFData (Row rt) => RecordsSet rt -> IO ()
+evalStrict rs = Set.toList rs `deepseq` return ()
 
 join :: forall rt'' rt rt'. Joinable rt rt' rt'' => RecordsSet rt -> RecordsSet rt' -> RecordsSet rt''
-join rs ss = Set.fromList $ concat $ map f_entry $ Set.toList ss
+join rs ss = Set.fromList $ concatMap f_entry $ Set.toList ss
   where
     join_map = Map.fromListWith (++) $ map join_entry $ Set.toList rs
     join_entry r =
@@ -58,13 +58,13 @@ join rs ss = Set.fromList $ concat $ map f_entry $ Set.toList ss
         Just r -> map (\r -> R.project @(R.VarsEnv rt'') (append r s)) r
 
 project :: forall s rt. (Project s rt) => RecordsSet rt -> RecordsSet (ProjectEnv s rt)
-project rs = Set.map (R.project @s) rs
+project = Set.map (R.project @s)
 
-map_rs :: (Row rt -> Row rt') -> RecordsSet rt -> RecordsSet rt'
-map_rs = Set.map
+mapRs :: (Row rt -> Row rt') -> RecordsSet rt -> RecordsSet rt'
+mapRs = Set.map
 
 filter :: forall rt. LookupMap rt => DPhrase -> RecordsSet rt -> RecordsSet rt
-filter p recs = Set.filter f recs
+filter p = Set.filter f
   where
     f r = fpred r == DP.Bool True
     fpred = compile @rt p
@@ -82,13 +82,13 @@ type RevisableFdEx left right adj_right rt rt' =
 
 type RevisableFd fd rt rt' = RevisableFdEx (Left fd) (Right fd) (AdjustOrder (Right fd) (VarsEnv rt)) rt rt'
 
-revise_fd ::
+reviseFd ::
   forall (fd :: FunDep) rt rt'.
   (RevisableFd fd rt rt') =>
   RecordsSet rt ->
   RecordsSet rt' ->
   RecordsSet rt
-revise_fd m n = Set.map update m
+reviseFd m n = Set.map update m
   where
     map = Map.fromList $ Set.toList $ Set.map f_row n
     f_row r = (R.project @(Left fd) r, R.project @(AdjustOrder (Right fd) (VarsEnv rt)) r)
@@ -104,7 +104,7 @@ instance Revisable '[] rt rt' where
   revise r s = r
 
 instance (RevisableFd fd rt rt', Revisable fds rt rt') => Revisable (fd ': fds) rt rt' where
-  revise r s = revise_fd @fd (revise @fds r s) s
+  revise r s = reviseFd @fd (revise @fds r s) s
 
 merge :: forall fds rt. Revisable fds rt rt => RecordsSet rt -> RecordsSet rt -> RecordsSet rt
 merge r s = revise @fds r s `Set.union` s

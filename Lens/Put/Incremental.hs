@@ -27,7 +27,7 @@ import qualified Lens.Predicate.Dynamic as DP
 import Lens.Predicate.Hybrid (HPhrase (..))
 import Lens.Record.Base (Env, InterCols, InterEnv, Project, ProjectEnv, VarsEnv)
 import qualified Lens.Record.Base as R
-import Lens.Record.Sorted (RecordsDelta, RecordsSet, Revisable, join, merge, project, revise_fd)
+import Lens.Record.Sorted (RecordsDelta, RecordsSet, Revisable, join, merge, project, reviseFd)
 import qualified Lens.Record.Sorted as SR
 import Tables (RecoverTables, recover_tables)
 import qualified Value
@@ -214,15 +214,15 @@ putDelta c (Debug l) delta_m wif =
     putDelta c l delta_m wif
 putDelta c dl@(DebugTime _ l) delta_m wif =
   do
-    SR.eval_strict_delta delta_m
+    SR.evalStrictDelta delta_m
     setDebugTime dl
     putDelta c l delta_m wif
 putDelta c (Drop (Proxy :: Proxy key) (Proxy :: Proxy env) (l :: Lens s1)) delta_n wif =
   do
     aff <- affectedIO
     let res =
-          ( revise_fd @(key --> P.Vars env) (positive delta_m) aff,
-            revise_fd @(key --> P.Vars env) (negative delta_m) aff
+          ( reviseFd @(key --> P.Vars env) (positive delta_m) aff,
+            reviseFd @(key --> P.Vars env) (negative delta_m) aff
           )
     putDelta c l res wif
   where

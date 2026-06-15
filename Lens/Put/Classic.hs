@@ -25,7 +25,7 @@ import qualified Lens.Predicate.Dynamic as DP
 import Lens.Predicate.Hybrid (HPhrase (..))
 import Lens.Record.Base (Env, InterCols, Project, ProjectEnv, VarsEnv)
 import qualified Lens.Record.Base as R
-import Lens.Record.Sorted (RecordsDelta, RecordsSet, Revisable, join, merge, project, revise_fd)
+import Lens.Record.Sorted (RecordsDelta, RecordsSet, Revisable, join, merge, project, reviseFd)
 import qualified Lens.Record.Sorted as SR
 import Tables (RecoverTables, recover_tables)
 import qualified Value
@@ -47,7 +47,7 @@ putClassicDrop c (Proxy :: Proxy key) (Proxy :: Proxy env) (l1 :: Lens s1) _ n =
   do
     old <- get c l1
     let mprime = join n envRows
-    return $ revise_fd @(key --> P.Vars env) mprime old
+    return $ reviseFd @(key --> P.Vars env) mprime old
   where
     envRows = Set.fromList [P.toRow @env]
 
@@ -117,7 +117,7 @@ putClassic c (Debug l) view =
     putClassic c l view
 putClassic c dl@(DebugTime _ l) view =
   do
-    SR.eval_strict view
+    SR.evalStrict view
     setDebugTime dl
     putClassic c l view
 putClassic c l@(Drop key env l1) n =
